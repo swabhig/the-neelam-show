@@ -21,6 +21,13 @@ type Answer = { prompt: string; text: string };
 type Phase = "hostSpeaking" | "listening" | "hearing" | "heardYou";
 
 async function speakWithFloor(text: string, language: "english" | "hinglish") {
+  // Clear any stale/backlogged utterance first. If a previous "finished
+  // talking" event misfired early (the real-phone bug this floor guards
+  // against), the browser's speech queue can end up with more than one
+  // utterance queued - which then plays back-to-back with no gap the
+  // moment it catches up, sounding like two prompts in one second.
+  // Cancelling first guarantees only ever one utterance in flight.
+  cancelSpeech();
   const floor = Math.max(MIN_SPEAK_FLOOR_MS, text.length * MIN_MS_PER_CHAR);
   await Promise.all([
     speak(text, language),

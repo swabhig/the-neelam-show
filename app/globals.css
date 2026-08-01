@@ -72,6 +72,15 @@ body {
   }
 }
 
+.filmy-word {
+  transition: opacity 0.2s ease;
+  pointer-events: auto;
+  cursor: default;
+}
+.filmy-word:hover {
+  opacity: 0.35 !important;
+}
+
 @keyframes fadeInUp {
   from {
     opacity: 0;

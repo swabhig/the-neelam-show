@@ -1,3 +1,26 @@
+function WordSpan({
+  word,
+  fontSize,
+  opacity,
+}: {
+  word: string;
+  fontSize: number;
+  opacity: number;
+}) {
+  return (
+    <span
+      className="filmy-word bebas"
+      style={{
+        fontSize,
+        color: "oklch(0.98 0.01 80)",
+        opacity,
+      }}
+    >
+      {word}
+    </span>
+  );
+}
+
 export function FilmSprocket() {
   return (
     <div
@@ -9,9 +32,9 @@ export function FilmSprocket() {
 
 /**
  * A rotated, low-opacity block of filmy dialogue lines - always visible
- * (including mobile), cropped by the parent's overflow:hidden. Meant to
- * sit directly behind a header or footer heading, matching the waitlist
- * page's visual language.
+ * (including mobile), cropped by the parent's overflow:hidden. Each word
+ * is its own span so hovering brightens just that word (desktop), same
+ * as the waitlist page's decorative text.
  */
 export function DialogueBlock({
   lines,
@@ -34,22 +57,22 @@ export function DialogueBlock({
         gap: 16,
         transform: `rotate(${rotate}deg)`,
         overflow: "hidden",
-        pointerEvents: "none",
       }}
     >
       {lines.map((line, i) => (
         <div
           key={i}
-          className="bebas"
           style={{
             fontSize,
             letterSpacing: "0.04em",
             whiteSpace: "nowrap",
-            color: "oklch(0.98 0.01 80)",
-            opacity: 0.07,
           }}
         >
-          {line}
+          {line.split(" ").map((word, j) => (
+            <span key={j}>
+              <WordSpan word={word} fontSize={fontSize} opacity={0.07} />{" "}
+            </span>
+          ))}
         </div>
       ))}
     </div>
@@ -82,29 +105,30 @@ const SCATTER_LINES: ScatterLine[] = [
  * Full-viewport scattered dialogue snippets, desktop only (hidden on
  * mobile via CSS so it never crowds the small screen most players will
  * actually use) - matches the waitlist page's decorative background.
+ * Per-word spans so each word brightens individually on hover.
  */
 export function ScatteredDialogue() {
   return (
-    <div className="filmy-scatter" style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }}>
+    <div className="filmy-scatter" style={{ position: "fixed", inset: 0, zIndex: 0 }}>
       {SCATTER_LINES.map((s, i) => (
-        <span
+        <div
           key={i}
-          className="bebas"
           style={{
             position: "absolute",
             top: s.top,
             left: s.left,
             right: s.right,
             transform: `rotate(${s.rotate}deg)`,
-            fontSize: s.fontSize,
             letterSpacing: "0.03em",
             whiteSpace: "nowrap",
-            color: "oklch(0.95 0.01 80)",
-            opacity: s.opacity,
           }}
         >
-          {s.text}
-        </span>
+          {s.text.split(" ").map((word, j) => (
+            <span key={j}>
+              <WordSpan word={word} fontSize={s.fontSize} opacity={s.opacity} />{" "}
+            </span>
+          ))}
+        </div>
       ))}
     </div>
   );
