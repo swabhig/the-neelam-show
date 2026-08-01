@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getNextRoundPrompts } from "@/lib/prompts";
 import { speak, cancelSpeech } from "@/lib/tts";
 import { createVAD } from "@/lib/vad";
@@ -9,9 +9,24 @@ import { AnswerRecorder } from "@/lib/recorder";
 const ROUND_SECONDS_DEFAULT = 60;
 const HESITATION_SKIP_MS = 3000;
 const HEARD_YOU_FLASH_MS = 250;
+// Real phones' speechSynthesis "finished talking" event is unreliable -
+// it can fire early, well before the audio has actually finished
+// playing. This floor guarantees a minimum wait based on word length,
+// so the player's turn never starts before the host has plausibly
+// finished saying the word, regardless of whether that event misfires.
+const MIN_MS_PER_CHAR = 90;
+const MIN_SPEAK_FLOOR_MS = 700;
 
 type Answer = { prompt: string; text: string };
 type Phase = "hostSpeaking" | "listening" | "hearing" | "heardYou";
+
+async function speakWithFloor(text: string, language: "english" | "hinglish") {
+  const floor = Math.max(MIN_SPEAK_FLOOR_MS, text.length * MIN_MS_PER_CHAR);
+  await Promise.all([
+    speak(text, language),
+    new Promise((resolve) => setTimeout(resolve, floor)),
+  ]);
+}
 
 export function PlayScreen({
   name,
@@ -31,6 +46,7 @@ export function PlayScreen({
   const [secondsLeft, setSecondsLeft] = useState(roundSeconds);
   const [currentPrompt, setCurrentPrompt] = useState("");
   const [phase, setPhase] = useState<Phase>("hostSpeaking");
+  const endRoundRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     let cancelled = false;
@@ -81,11 +97,11 @@ export function PlayScreen({
         currentPromptWord = next;
         setCurrentPrompt(next);
         setPhase("hostSpeaking");
-        await speak(next, language);
+        await speakWithFloor(next, language);
         if (cancelled || roundEnded) return;
         // The player's turn - and the hesitation countdown - only starts
-        // once the host has actually finished saying the word, not the
-        // instant we told it to start speaking.
+        // once the host has actually finished saying the word (or the
+        // minimum floor has passed), not the instant we told it to speak.
         acceptingAnswer = true;
         setPhase("listening");
         armHesitationSkip();
@@ -152,7 +168,9 @@ export function PlayScreen({
         }, 800);
       }
 
-      await speak(`Ready, ${name}?`, language);
+      endRoundRef.current = endRound;
+
+      await speakWithFloor(`Ready, ${name}?`, language);
       if (cancelled) return;
       await nextPrompt();
 
@@ -190,11 +208,19 @@ export function PlayScreen({
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-8 px-6 text-center">
-      <div className="bebas text-2xl" style={{ color: "var(--accent)" }}>
+    <div className="relative flex min-h-screen flex-col items-center justify-center gap-6 px-6 text-center">
+      <button
+        onClick={() => endRoundRef.current()}
+        className="absolute right-5 top-5 rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-wide"
+        style={{ borderColor: "oklch(0.4 0.02 40)", color: "oklch(0.65 0.02 60)" }}
+      >
+        End Round
+      </button>
+
+      <div className="bebas leading-none" style={{ color: "var(--accent)", fontSize: "clamp(4rem, 22vw, 8rem)" }}>
         {secondsLeft}s
       </div>
-      <div className="bebas text-7xl">{count}</div>
+      <div className="bebas text-5xl">{count}</div>
       <div className="bebas text-4xl">{currentPrompt}</div>
 
       <div className="flex flex-col items-center gap-3">
