@@ -79,6 +79,7 @@ body {
 }
 .filmy-word:hover {
   opacity: 0.35 !important;
+  transition: opacity 0.15s ease !important;
 }
 
 @keyframes fadeInUp {
