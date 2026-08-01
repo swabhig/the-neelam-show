@@ -73,7 +73,7 @@ body {
 }
 
 .filmy-word {
-  transition: opacity 0.2s ease;
+  display: inline-block;
   pointer-events: auto;
   cursor: default;
 }

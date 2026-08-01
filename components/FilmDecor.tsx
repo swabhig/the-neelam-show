@@ -1,19 +1,61 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+// Deterministic pseudo-random, seeded by a stable string (the word
+// itself + position) - avoids Math.random(), which would produce a
+// different value on the server render vs the client and break hydration.
+function seededRandom(seed: string): number {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash << 5) - hash + seed.charCodeAt(i);
+    hash |= 0;
+  }
+  return (Math.abs(hash) % 1000) / 1000;
+}
+
 function WordSpan({
   word,
+  seed,
   fontSize,
   opacity,
 }: {
   word: string;
+  seed: string;
   fontSize: number;
   opacity: number;
 }) {
+  const [bright, setBright] = useState(false);
+  const peak = Math.min(0.4, opacity * 4);
+
+  useEffect(() => {
+    // Plain JS-driven pulse (not CSS @keyframes) - each word gets its own
+    // staggered timer so they don't all glow in unison, ambient and
+    // automatic so it works on touch devices too, where :hover can
+    // never fire (no mouse pointer to hover with).
+    const initialDelay = seededRandom(seed) * 5000;
+    const cycleMs = 3000 + seededRandom(seed + "-cycle") * 2500;
+    let interval: ReturnType<typeof setInterval> | undefined;
+
+    const startTimer = setTimeout(() => {
+      setBright(true);
+      interval = setInterval(() => setBright((b) => !b), cycleMs);
+    }, initialDelay);
+
+    return () => {
+      clearTimeout(startTimer);
+      if (interval) clearInterval(interval);
+    };
+  }, [seed]);
+
   return (
     <span
       className="filmy-word bebas"
       style={{
         fontSize,
         color: "oklch(0.98 0.01 80)",
-        opacity,
+        opacity: bright ? peak : opacity,
+        transition: "opacity 2.5s ease-in-out",
       }}
     >
       {word}
@@ -70,7 +112,12 @@ export function DialogueBlock({
         >
           {line.split(" ").map((word, j) => (
             <span key={j}>
-              <WordSpan word={word} fontSize={fontSize} opacity={0.07} />{" "}
+              <WordSpan
+                word={word}
+                seed={`${i}-${j}-${word}`}
+                fontSize={fontSize}
+                opacity={0.07}
+              />{" "}
             </span>
           ))}
         </div>
@@ -125,7 +172,12 @@ export function ScatteredDialogue() {
         >
           {s.text.split(" ").map((word, j) => (
             <span key={j}>
-              <WordSpan word={word} fontSize={s.fontSize} opacity={s.opacity} />{" "}
+              <WordSpan
+                word={word}
+                seed={`${i}-${j}-${word}`}
+                fontSize={s.fontSize}
+                opacity={s.opacity}
+              />{" "}
             </span>
           ))}
         </div>
