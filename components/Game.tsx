@@ -15,6 +15,7 @@ type Stage =
       name: "reveal";
       playerName: string;
       count: number;
+      totalPrompts: number;
       answers: { prompt: string; text: string }[];
     };
 
@@ -39,11 +40,12 @@ export function Game() {
         name={stage.playerName}
         language={stage.language}
         recentWords={player?.recentWords ?? []}
-        onRoundEnd={({ count, answers }) =>
+        onRoundEnd={({ count, totalPrompts, answers }) =>
           setStage({
             name: "reveal",
             playerName: stage.playerName,
             count,
+            totalPrompts,
             answers,
           })
         }
@@ -56,6 +58,7 @@ export function Game() {
       name={stage.playerName}
       deviceId={deviceId}
       count={stage.count}
+      totalPrompts={stage.totalPrompts}
       answers={stage.answers}
       onPlayAgain={() => setStage({ name: "name" })}
     />

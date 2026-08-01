@@ -44,7 +44,11 @@ export function PlayScreen({
   name: string;
   language: "english" | "hinglish";
   recentWords: string[];
-  onRoundEnd: (result: { count: number; answers: Answer[] }) => void;
+  onRoundEnd: (result: {
+    count: number;
+    totalPrompts: number;
+    answers: Answer[];
+  }) => void;
   /** Override for testing - defaults to the real 60s round. */
   roundSeconds?: number;
 }) {
@@ -62,6 +66,7 @@ export function PlayScreen({
     let scoreFlashTimer: ReturnType<typeof setTimeout> | null = null;
 
     let liveCount = 0;
+    let totalPrompts = 0;
     let prompts: string[] = [];
     let promptIndex = -1;
     const answers: Answer[] = [];
@@ -98,6 +103,7 @@ export function PlayScreen({
           prompts = [...prompts, ...getNextRoundPrompts(recentWords, 20)];
         }
         const word = prompts[promptIndex];
+        totalPrompts += 1;
         setCurrentPrompt(word);
         setPhase("hostSpeaking");
 
@@ -147,7 +153,7 @@ export function PlayScreen({
         // Give in-flight background transcriptions a moment to land -
         // this is the reveal screen's natural "revealing..." pause.
         setTimeout(() => {
-          if (!cancelled) onRoundEnd({ count: liveCount, answers });
+          if (!cancelled) onRoundEnd({ count: liveCount, totalPrompts, answers });
         }, 800);
       }
 
