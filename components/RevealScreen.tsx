@@ -51,6 +51,7 @@ export function RevealScreen({
   const [caption, setCaption] = useState("");
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [displayCount, setDisplayCount] = useState(0);
+  const [showFlash, setShowFlash] = useState(false);
   const updateAfterRound = useMutation(api.players.updateAfterRound);
 
   useEffect(() => {
@@ -81,7 +82,11 @@ export function RevealScreen({
     const interval = setInterval(() => {
       current = Math.min(count, current + step);
       setDisplayCount(current);
-      if (current >= count) clearInterval(interval);
+      if (current >= count) {
+        clearInterval(interval);
+        setShowFlash(true);
+        setTimeout(() => setShowFlash(false), 800);
+      }
     }, 40);
     return () => clearInterval(interval);
   }, [count]);
@@ -138,6 +143,19 @@ export function RevealScreen({
                 pointerEvents: "none",
               }}
             />
+            {showFlash && (
+              <div
+                className="flash-burst absolute rounded-full"
+                style={{
+                  top: -60,
+                  width: 400,
+                  height: 400,
+                  background:
+                    "radial-gradient(circle, oklch(0.95 0.05 85) 0%, var(--accent-glow) 45%, transparent 75%)",
+                  pointerEvents: "none",
+                }}
+              />
+            )}
             <div className="bebas relative text-9xl">{displayCount}</div>
           </div>
           <p
@@ -162,7 +180,7 @@ export function RevealScreen({
           {highlights.map((h, i) => (
             <div
               key={i}
-              className="fade-in-up flex overflow-hidden rounded-2xl border"
+              className="deal-in flex overflow-hidden rounded-2xl border"
               style={{
                 borderColor: "var(--accent)",
                 background:
