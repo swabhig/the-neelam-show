@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { getNextRoundPrompts } from "@/lib/prompts";
 import { speak, cancelSpeech } from "@/lib/tts";
 import { createVAD } from "@/lib/vad";
@@ -8,8 +8,10 @@ import { AnswerRecorder } from "@/lib/recorder";
 
 const ROUND_SECONDS_DEFAULT = 60;
 const HESITATION_SKIP_MS = 3000;
+const HEARD_YOU_FLASH_MS = 250;
 
 type Answer = { prompt: string; text: string };
+type Phase = "hostSpeaking" | "listening" | "hearing" | "heardYou";
 
 export function PlayScreen({
   name,
@@ -28,12 +30,14 @@ export function PlayScreen({
   const [count, setCount] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(roundSeconds);
   const [currentPrompt, setCurrentPrompt] = useState("");
+  const [phase, setPhase] = useState<Phase>("hostSpeaking");
 
   useEffect(() => {
     let cancelled = false;
     let vad: { stop: () => void } | null = null;
     let timerInterval: ReturnType<typeof setInterval> | null = null;
     let hesitationTimer: ReturnType<typeof setTimeout> | null = null;
+    let heardYouTimer: ReturnType<typeof setTimeout> | null = null;
     let roundEnded = false;
 
     // All game state lives as plain closure variables, not refs - every
@@ -41,7 +45,7 @@ export function PlayScreen({
     // is defined inside this same effect, so a shared closure is enough.
     let liveCount = 0;
     let prompts: string[] = [];
-    let promptIndex = 0;
+    let promptIndex = -1;
     let currentPromptWord = "";
     const answers: Answer[] = [];
 
@@ -55,6 +59,11 @@ export function PlayScreen({
 
       const recorder = new AnswerRecorder(stream);
 
+      // Guards against the mic picking up the host's own voice (phone
+      // speaker bleeding into the phone mic) and mistaking it for an
+      // answer - only true while we actually want the player's turn.
+      let acceptingAnswer = false;
+
       function armHesitationSkip() {
         if (hesitationTimer) clearTimeout(hesitationTimer);
         hesitationTimer = setTimeout(() => {
@@ -62,7 +71,8 @@ export function PlayScreen({
         }, HESITATION_SKIP_MS);
       }
 
-      function nextPrompt() {
+      async function nextPrompt() {
+        acceptingAnswer = false;
         promptIndex += 1;
         if (promptIndex >= prompts.length) {
           prompts = [...prompts, ...getNextRoundPrompts(recentWords, 20)];
@@ -70,21 +80,34 @@ export function PlayScreen({
         const next = prompts[promptIndex];
         currentPromptWord = next;
         setCurrentPrompt(next);
-        speak(next, language);
+        setPhase("hostSpeaking");
+        await speak(next, language);
+        if (cancelled || roundEnded) return;
+        // The player's turn - and the hesitation countdown - only starts
+        // once the host has actually finished saying the word, not the
+        // instant we told it to start speaking.
+        acceptingAnswer = true;
+        setPhase("listening");
         armHesitationSkip();
       }
 
       function onSpeechStart() {
+        if (!acceptingAnswer) return;
         if (hesitationTimer) clearTimeout(hesitationTimer);
+        setPhase("hearing");
         recorder.start();
       }
 
       function onSpeechEnd() {
-        // Advance the game IMMEDIATELY - nothing below this line before
-        // nextPrompt() touches the network.
+        if (!acceptingAnswer) return;
+        acceptingAnswer = false;
+
+        // Advance the score IMMEDIATELY - nothing below this line before
+        // the counter update touches the network.
         const finishedPrompt = currentPromptWord;
         liveCount += 1;
         setCount(liveCount);
+        setPhase("heardYou");
 
         recorder
           .stop()
@@ -103,7 +126,12 @@ export function PlayScreen({
             answers.push({ prompt: finishedPrompt, text: "(missed that one)" });
           });
 
-        nextPrompt();
+        // Brief confirming flash before moving on - the score already
+        // updated above, this delay only affects the visual transition.
+        if (heardYouTimer) clearTimeout(heardYouTimer);
+        heardYouTimer = setTimeout(() => {
+          if (!cancelled && !roundEnded) nextPrompt();
+        }, HEARD_YOU_FLASH_MS);
       }
 
       vad = createVAD(stream, onSpeechStart, onSpeechEnd);
@@ -113,6 +141,7 @@ export function PlayScreen({
         roundEnded = true;
         if (timerInterval) clearInterval(timerInterval);
         if (hesitationTimer) clearTimeout(hesitationTimer);
+        if (heardYouTimer) clearTimeout(heardYouTimer);
         vad?.stop();
         cancelSpeech();
 
@@ -123,14 +152,9 @@ export function PlayScreen({
         }, 800);
       }
 
-      // kick off the first prompt
-      const first = prompts[0];
-      currentPromptWord = first;
-      setCurrentPrompt(first);
       await speak(`Ready, ${name}?`, language);
       if (cancelled) return;
-      speak(first, language);
-      armHesitationSkip();
+      await nextPrompt();
 
       let remaining = roundSeconds;
       timerInterval = setInterval(() => {
@@ -151,11 +175,19 @@ export function PlayScreen({
       cancelled = true;
       if (timerInterval) clearInterval(timerInterval);
       if (hesitationTimer) clearTimeout(hesitationTimer);
+      if (heardYouTimer) clearTimeout(heardYouTimer);
       vad?.stop();
       cancelSpeech();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const phaseLabel: Record<Phase, string> = {
+    hostSpeaking: "host is talking…",
+    listening: "your turn — say the first thing that comes to mind",
+    hearing: "hearing you…",
+    heardYou: "got it!",
+  };
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-8 px-6 text-center">
@@ -164,6 +196,42 @@ export function PlayScreen({
       </div>
       <div className="bebas text-7xl">{count}</div>
       <div className="bebas text-4xl">{currentPrompt}</div>
+
+      <div className="flex flex-col items-center gap-3">
+        <div
+          className="flex h-16 w-16 items-center justify-center rounded-full border-2 transition-all duration-150"
+          style={{
+            borderColor:
+              phase === "hearing" || phase === "heardYou"
+                ? "var(--accent)"
+                : "oklch(0.4 0.02 40)",
+            background:
+              phase === "hearing"
+                ? "var(--accent-glow)"
+                : phase === "heardYou"
+                  ? "var(--accent)"
+                  : "transparent",
+            transform: phase === "hearing" ? "scale(1.15)" : "scale(1)",
+            boxShadow:
+              phase === "hearing" ? "0 0 24px var(--accent-glow)" : "none",
+          }}
+        >
+          <span className="text-2xl">
+            {phase === "hostSpeaking" ? "\u{1F399}️" : "\u{1F3A4}"}
+          </span>
+        </div>
+        <p
+          className="text-sm"
+          style={{
+            color:
+              phase === "hearing" || phase === "heardYou"
+                ? "var(--accent)"
+                : "oklch(0.65 0.02 60)",
+          }}
+        >
+          {phaseLabel[phase]}
+        </p>
+      </div>
     </div>
   );
 }
