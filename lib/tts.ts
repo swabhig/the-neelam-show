@@ -22,25 +22,43 @@ function playUrl(url: string): Promise<void> {
   });
 }
 
+// Some browsers (seen on iOS Safari) can leave an <audio> element neither
+// firing 'ended'/'error' nor rejecting play() - it just silently never
+// finishes. Since speakWithFloor() awaits the "Ready, {name}?" greeting
+// before the round starts, a stuck promise here would block the whole
+// game from ever beginning. This guarantees speak() always settles.
+function withTimeout(promise: Promise<void>, ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    promise.then(() => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+}
+
 export function speak(text: string): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
 
   const normalized = text.toLowerCase().trim();
   if (KNOWN_TEXTS.has(normalized)) {
-    return playUrl(`/audio/${slugify(text)}.mp3`);
+    return withTimeout(playUrl(`/audio/${slugify(text)}.mp3`), 4000);
   }
 
   // Dynamic text (the "Ready, {name}?" greeting) isn't pregenerated, so
   // this goes to ElevenLabs live - acceptable here since it only happens
   // once before the round's tight cadence begins, not mid-round.
-  return fetch("/api/tts", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
-  })
-    .then((res) => res.blob())
-    .then((blob) => playUrl(URL.createObjectURL(blob)))
-    .catch(() => {});
+  return withTimeout(
+    fetch("/api/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    })
+      .then((res) => res.blob())
+      .then((blob) => playUrl(URL.createObjectURL(blob)))
+      .catch(() => {}),
+    6000
+  );
 }
 
 export function cancelSpeech() {
