@@ -3,36 +3,35 @@
 import { useEffect, useRef, useState } from "react";
 import { getNextRoundPrompts } from "@/lib/prompts";
 import { speak, cancelSpeech } from "@/lib/tts";
-import { createVAD } from "@/lib/vad";
 import { AnswerRecorder } from "@/lib/recorder";
 
 const ROUND_SECONDS_DEFAULT = 60;
-const HESITATION_SKIP_MS = 3000;
-const HEARD_YOU_FLASH_MS = 250;
-// Real phones' speechSynthesis "finished talking" event is unreliable -
-// it can fire early, well before the audio has actually finished
-// playing. This floor guarantees a minimum wait based on word length,
-// so the player's turn never starts before the host has plausibly
-// finished saying the word, regardless of whether that event misfires.
+// Fixed cadence, independent of speech/mic detection entirely - this is
+// what makes pacing reliable regardless of how a given phone's mic or
+// speechSynthesis behaves. ~30 words max in a 60s round.
+const WORD_CYCLE_MS = 2000;
+// How long to let the host finish speaking before we start recording,
+// so the recording captures the player's answer, not the host's own
+// voice bleeding through the phone speaker into its own mic.
 const MIN_MS_PER_CHAR = 90;
-const MIN_SPEAK_FLOOR_MS = 700;
+const MIN_SPEAK_FLOOR_MS = 500;
+
+// Whisper's well-documented habit of hallucinating a stock phrase when
+// given silence or pure noise - filtered out so ambient sound is never
+// mistaken for a spoken answer.
+const NOISE_PATTERNS = /^(thank you\.?|thanks for watching\.?|you\.?|bye\.?|\.+)$/i;
 
 type Answer = { prompt: string; text: string };
-type Phase = "hostSpeaking" | "listening" | "hearing" | "heardYou";
+type Phase = "hostSpeaking" | "listening";
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function speakWithFloor(text: string, language: "english" | "hinglish") {
-  // Clear any stale/backlogged utterance first. If a previous "finished
-  // talking" event misfired early (the real-phone bug this floor guards
-  // against), the browser's speech queue can end up with more than one
-  // utterance queued - which then plays back-to-back with no gap the
-  // moment it catches up, sounding like two prompts in one second.
-  // Cancelling first guarantees only ever one utterance in flight.
   cancelSpeech();
   const floor = Math.max(MIN_SPEAK_FLOOR_MS, text.length * MIN_MS_PER_CHAR);
-  await Promise.all([
-    speak(text, language),
-    new Promise((resolve) => setTimeout(resolve, floor)),
-  ]);
+  await Promise.all([speak(text, language), sleep(floor)]);
 }
 
 export function PlayScreen({
@@ -53,23 +52,18 @@ export function PlayScreen({
   const [secondsLeft, setSecondsLeft] = useState(roundSeconds);
   const [currentPrompt, setCurrentPrompt] = useState("");
   const [phase, setPhase] = useState<Phase>("hostSpeaking");
+  const [justScored, setJustScored] = useState(false);
   const endRoundRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     let cancelled = false;
-    let vad: { stop: () => void } | null = null;
     let timerInterval: ReturnType<typeof setInterval> | null = null;
-    let hesitationTimer: ReturnType<typeof setTimeout> | null = null;
-    let heardYouTimer: ReturnType<typeof setTimeout> | null = null;
     let roundEnded = false;
+    let scoreFlashTimer: ReturnType<typeof setTimeout> | null = null;
 
-    // All game state lives as plain closure variables, not refs - every
-    // reader and writer below (the timer, the VAD callbacks, endRound)
-    // is defined inside this same effect, so a shared closure is enough.
     let liveCount = 0;
     let prompts: string[] = [];
     let promptIndex = -1;
-    let currentPromptWord = "";
     const answers: Answer[] = [];
 
     async function setup() {
@@ -82,90 +76,72 @@ export function PlayScreen({
 
       const recorder = new AnswerRecorder(stream);
 
-      // Guards against the mic picking up the host's own voice (phone
-      // speaker bleeding into the phone mic) and mistaking it for an
-      // answer - only true while we actually want the player's turn.
-      let acceptingAnswer = false;
+      function scoreIfRealAnswer(prompt: string, text: string) {
+        const cleaned = text.trim();
+        const isNoise = !cleaned || NOISE_PATTERNS.test(cleaned);
+        if (isNoise) return;
 
-      function armHesitationSkip() {
-        if (hesitationTimer) clearTimeout(hesitationTimer);
-        hesitationTimer = setTimeout(() => {
-          nextPrompt();
-        }, HESITATION_SKIP_MS);
+        liveCount += 1;
+        setCount(liveCount);
+        answers.push({ prompt, text: cleaned });
+
+        setJustScored(true);
+        if (scoreFlashTimer) clearTimeout(scoreFlashTimer);
+        scoreFlashTimer = setTimeout(() => setJustScored(false), 400);
       }
 
-      async function nextPrompt() {
-        acceptingAnswer = false;
+      async function runCycle() {
+        if (cancelled || roundEnded) return;
+
         promptIndex += 1;
         if (promptIndex >= prompts.length) {
           prompts = [...prompts, ...getNextRoundPrompts(recentWords, 20)];
         }
-        const next = prompts[promptIndex];
-        currentPromptWord = next;
-        setCurrentPrompt(next);
+        const word = prompts[promptIndex];
+        setCurrentPrompt(word);
         setPhase("hostSpeaking");
-        await speakWithFloor(next, language);
+
+        // Fire-and-forget: don't let TTS reliability affect the fixed
+        // cadence at all, only use it to produce audio.
+        speakWithFloor(word, language);
+
+        const listenDelay = Math.max(
+          400,
+          Math.min(1200, word.length * MIN_MS_PER_CHAR)
+        );
+        await sleep(listenDelay);
         if (cancelled || roundEnded) return;
-        // The player's turn - and the hesitation countdown - only starts
-        // once the host has actually finished saying the word (or the
-        // minimum floor has passed), not the instant we told it to speak.
-        acceptingAnswer = true;
+
         setPhase("listening");
-        armHesitationSkip();
-      }
-
-      function onSpeechStart() {
-        if (!acceptingAnswer) return;
-        if (hesitationTimer) clearTimeout(hesitationTimer);
-        setPhase("hearing");
         recorder.start();
-      }
 
-      function onSpeechEnd() {
-        if (!acceptingAnswer) return;
-        acceptingAnswer = false;
-
-        // Advance the score IMMEDIATELY - nothing below this line before
-        // the counter update touches the network.
-        const finishedPrompt = currentPromptWord;
-        liveCount += 1;
-        setCount(liveCount);
-        setPhase("heardYou");
+        await sleep(WORD_CYCLE_MS - listenDelay);
+        if (cancelled || roundEnded) return;
 
         recorder
           .stop()
           .then((blob) => {
-            // Fire-and-forget: the game has already moved to the next
-            // prompt by the time this resolves.
             const formData = new FormData();
             formData.append("audio", blob);
             return fetch("/api/transcribe", { method: "POST", body: formData });
           })
           .then((res) => res.json())
           .then((data: { text: string }) => {
-            answers.push({ prompt: finishedPrompt, text: data.text });
+            scoreIfRealAnswer(word, data.text ?? "");
           })
           .catch(() => {
-            answers.push({ prompt: finishedPrompt, text: "(missed that one)" });
+            // transcription failure just means this window isn't scored -
+            // never crash the round over a single failed request.
           });
 
-        // Brief confirming flash before moving on - the score already
-        // updated above, this delay only affects the visual transition.
-        if (heardYouTimer) clearTimeout(heardYouTimer);
-        heardYouTimer = setTimeout(() => {
-          if (!cancelled && !roundEnded) nextPrompt();
-        }, HEARD_YOU_FLASH_MS);
+        runCycle();
       }
-
-      vad = createVAD(stream, onSpeechStart, onSpeechEnd);
 
       function endRound() {
         if (roundEnded) return;
         roundEnded = true;
         if (timerInterval) clearInterval(timerInterval);
-        if (hesitationTimer) clearTimeout(hesitationTimer);
-        if (heardYouTimer) clearTimeout(heardYouTimer);
-        vad?.stop();
+        if (scoreFlashTimer) clearTimeout(scoreFlashTimer);
         cancelSpeech();
 
         // Give in-flight background transcriptions a moment to land -
@@ -179,7 +155,7 @@ export function PlayScreen({
 
       await speakWithFloor(`Ready, ${name}?`, language);
       if (cancelled) return;
-      await nextPrompt();
+      runCycle();
 
       let remaining = roundSeconds;
       timerInterval = setInterval(() => {
@@ -199,20 +175,11 @@ export function PlayScreen({
     return () => {
       cancelled = true;
       if (timerInterval) clearInterval(timerInterval);
-      if (hesitationTimer) clearTimeout(hesitationTimer);
-      if (heardYouTimer) clearTimeout(heardYouTimer);
-      vad?.stop();
+      if (scoreFlashTimer) clearTimeout(scoreFlashTimer);
       cancelSpeech();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const phaseLabel: Record<Phase, string> = {
-    hostSpeaking: "host is talking…",
-    listening: "your turn — say the first thing that comes to mind",
-    hearing: "hearing you…",
-    heardYou: "got it!",
-  };
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center gap-6 px-6 text-center">
@@ -227,26 +194,21 @@ export function PlayScreen({
       <div className="bebas leading-none" style={{ color: "var(--accent)", fontSize: "clamp(4rem, 22vw, 8rem)" }}>
         {secondsLeft}s
       </div>
-      <div className="bebas text-5xl">{count}</div>
+      <div
+        className="bebas text-5xl transition-transform duration-150"
+        style={{ transform: justScored ? "scale(1.25)" : "scale(1)" }}
+      >
+        {count}
+      </div>
       <div className="bebas text-4xl">{currentPrompt}</div>
 
       <div className="flex flex-col items-center gap-3">
         <div
           className="flex h-16 w-16 items-center justify-center rounded-full border-2 transition-all duration-150"
           style={{
-            borderColor:
-              phase === "hearing" || phase === "heardYou"
-                ? "var(--accent)"
-                : "oklch(0.4 0.02 40)",
-            background:
-              phase === "hearing"
-                ? "var(--accent-glow)"
-                : phase === "heardYou"
-                  ? "var(--accent)"
-                  : "transparent",
-            transform: phase === "hearing" ? "scale(1.15)" : "scale(1)",
-            boxShadow:
-              phase === "hearing" ? "0 0 24px var(--accent-glow)" : "none",
+            borderColor: phase === "listening" ? "var(--accent)" : "oklch(0.4 0.02 40)",
+            background: phase === "listening" ? "var(--accent-glow)" : "transparent",
+            boxShadow: phase === "listening" ? "0 0 24px var(--accent-glow)" : "none",
           }}
         >
           <span className="text-2xl">
@@ -255,14 +217,11 @@ export function PlayScreen({
         </div>
         <p
           className="text-sm"
-          style={{
-            color:
-              phase === "hearing" || phase === "heardYou"
-                ? "var(--accent)"
-                : "oklch(0.65 0.02 60)",
-          }}
+          style={{ color: phase === "listening" ? "var(--accent)" : "oklch(0.65 0.02 60)" }}
         >
-          {phaseLabel[phase]}
+          {phase === "hostSpeaking"
+            ? "host is talking…"
+            : "your turn — say the first thing that comes to mind"}
         </p>
       </div>
     </div>
