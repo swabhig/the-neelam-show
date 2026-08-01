@@ -3,22 +3,31 @@
 import { useEffect, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-
-type Answer = { prompt: string; text: string };
+import type { Answer, PlayerResult } from "@/lib/types";
 
 const WATERMARK = "the-neelam-show.vercel.app";
 
-function downloadCsv(name: string, answers: Answer[]) {
+function downloadCsv(
+  filenameBase: string,
+  players: { name: string; answers: Answer[] }[]
+) {
   const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
-  const rows = [
-    "Prompt,Answer",
-    ...answers.map((a) => `${escape(a.prompt)},${escape(a.text)}`),
-  ];
+  const multi = players.length > 1;
+  const rows = [multi ? "Player,Prompt,Answer" : "Prompt,Answer"];
+  for (const p of players) {
+    for (const a of p.answers) {
+      rows.push(
+        multi
+          ? `${escape(p.name)},${escape(a.prompt)},${escape(a.text)}`
+          : `${escape(a.prompt)},${escape(a.text)}`
+      );
+    }
+  }
   const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `the-neelam-show-${name.toLowerCase().replace(/\s+/g, "-")}.csv`;
+  link.download = `the-neelam-show-${filenameBase.toLowerCase().replace(/\s+/g, "-")}.csv`;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -29,6 +38,8 @@ export function RevealScreen({
   count,
   totalPrompts,
   answers,
+  opponent,
+  persist = true,
   onPlayAgain,
 }: {
   name: string;
@@ -36,6 +47,10 @@ export function RevealScreen({
   count: number;
   totalPrompts: number;
   answers: Answer[];
+  /** Present only in pass-and-play mode, for the head-to-head result. */
+  opponent?: PlayerResult;
+  /** Solo mode saves to Convex; pass-and-play (shared device) never does. */
+  persist?: boolean;
   onPlayAgain: () => void;
 }) {
   const [verdict, setVerdict] = useState(
@@ -54,11 +69,13 @@ export function RevealScreen({
   const updateAfterRound = useMutation(api.players.updateAfterRound);
 
   useEffect(() => {
-    updateAfterRound({
-      deviceId,
-      score: count,
-      wordsUsed: answers.map((a) => a.prompt),
-    });
+    if (persist) {
+      updateAfterRound({
+        deviceId,
+        score: count,
+        wordsUsed: answers.map((a) => a.prompt),
+      });
+    }
 
     fetch("/api/verdict", {
       method: "POST",
@@ -73,16 +90,13 @@ export function RevealScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const shareText = opponent
+    ? `${name} vs ${opponent.name} on The Neelam Show — ${count} vs ${opponent.count} in 60 seconds. One word, zero thinking time. Rematch?`
+    : `I answered ${count} in 60 seconds on The Neelam Show — one word, zero thinking time, no right or wrong answers. Beat me if you can.`;
   const shareX =
-    "https://twitter.com/intent/tweet?text=" +
-    encodeURIComponent(
-      `I answered ${count} in 60 seconds on The Neelam Show — one word, zero thinking time, no right or wrong answers. Beat me if you can.`
-    );
+    "https://twitter.com/intent/tweet?text=" + encodeURIComponent(shareText);
   const shareWhatsapp =
-    "https://wa.me/?text=" +
-    encodeURIComponent(
-      `I answered ${count} in 60 seconds on The Neelam Show — one word, zero thinking time, no right or wrong answers. Beat me if you can 👀`
-    );
+    "https://wa.me/?text=" + encodeURIComponent(shareText + (opponent ? "" : " 👀"));
 
   return (
     <div
@@ -203,25 +217,63 @@ export function RevealScreen({
                   animation: "glowPulse 5s ease-in-out infinite",
                 }}
               />
-              <span
-                className="display relative"
-                style={{ fontSize: 90, lineHeight: 0.85, color: "var(--ink)" }}
-              >
-                {count}
-              </span>
-              <span
-                className="relative mt-2.5 text-xs font-bold uppercase"
-                style={{ letterSpacing: "0.15em", color: "var(--muted)" }}
-              >
-                answered in 60 seconds
-              </span>
-              {fasterThanAvg !== null && (
-                <span
-                  className="relative mt-1 text-xs font-bold"
-                  style={{ color: "var(--accent)" }}
-                >
-                  &#9650; {fasterThanAvg}% faster than average
-                </span>
+              {opponent ? (
+                <>
+                  <div className="relative flex items-center gap-5">
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="display" style={{ fontSize: 56, lineHeight: 0.85, color: "var(--ink)" }}>
+                        {count}
+                      </span>
+                      <span className="text-xs font-bold uppercase" style={{ color: "var(--muted)" }}>
+                        {name}
+                      </span>
+                    </div>
+                    <span className="display" style={{ fontSize: 22, color: "var(--muted-soft)" }}>
+                      vs
+                    </span>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="display" style={{ fontSize: 56, lineHeight: 0.85, color: "var(--ink)" }}>
+                        {opponent.count}
+                      </span>
+                      <span className="text-xs font-bold uppercase" style={{ color: "var(--muted)" }}>
+                        {opponent.name}
+                      </span>
+                    </div>
+                  </div>
+                  <span
+                    className="relative mt-3 text-xs font-bold uppercase"
+                    style={{ letterSpacing: "0.1em", color: "var(--accent)" }}
+                  >
+                    {count === opponent.count
+                      ? "It's a tie!"
+                      : count > opponent.count
+                        ? `${name} wins!`
+                        : `${opponent.name} wins!`}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span
+                    className="display relative"
+                    style={{ fontSize: 90, lineHeight: 0.85, color: "var(--ink)" }}
+                  >
+                    {count}
+                  </span>
+                  <span
+                    className="relative mt-2.5 text-xs font-bold uppercase"
+                    style={{ letterSpacing: "0.15em", color: "var(--muted)" }}
+                  >
+                    answered in 60 seconds
+                  </span>
+                  {fasterThanAvg !== null && (
+                    <span
+                      className="relative mt-1 text-xs font-bold"
+                      style={{ color: "var(--accent)" }}
+                    >
+                      &#9650; {fasterThanAvg}% faster than average
+                    </span>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -302,13 +354,18 @@ export function RevealScreen({
         Play Again
       </button>
 
-      {answers.length > 0 && (
+      {(answers.length > 0 || (opponent?.answers.length ?? 0) > 0) && (
         <button
-          onClick={() => downloadCsv(name, answers)}
+          onClick={() =>
+            downloadCsv(
+              opponent ? `${name}-vs-${opponent.name}` : name,
+              opponent ? [{ name, answers }, { name: opponent.name, answers: opponent.answers }] : [{ name, answers }]
+            )
+          }
           className="relative mt-4 text-sm underline"
           style={{ color: "var(--muted)" }}
         >
-          Download all {answers.length} answers (CSV)
+          Download all {answers.length + (opponent?.answers.length ?? 0)} answers (CSV)
         </button>
       )}
     </div>

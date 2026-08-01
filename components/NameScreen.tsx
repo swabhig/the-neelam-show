@@ -21,19 +21,30 @@ const EXAMPLE_PAIRS = [
 export function NameScreen({
   onStart,
 }: {
-  onStart: (name: string, language: "english" | "hinglish") => void;
+  onStart: (
+    name: string,
+    language: "english" | "hinglish",
+    mode: "solo" | "pass"
+  ) => void;
 }) {
   const [name, setName] = useState("");
   const [language, setLanguage] = useState<"english" | "hinglish">(
     "english"
   );
+  const [mode, setMode] = useState<"solo" | "pass">("solo");
   const getOrCreate = useMutation(api.players.getOrCreate);
 
   async function handleStart() {
     const trimmed = name.trim();
     if (!trimmed) return;
-    await getOrCreate({ deviceId: getDeviceId(), name: trimmed });
-    onStart(trimmed, language);
+    // Pass & play is a shared-device session between two people, so it
+    // never touches Convex - saving a score there would overwrite
+    // whichever one person's personal-best is meant to live on this
+    // device with the other player's number.
+    if (mode === "solo") {
+      await getOrCreate({ deviceId: getDeviceId(), name: trimmed });
+    }
+    onStart(trimmed, language, mode);
   }
 
   return (
@@ -71,7 +82,7 @@ export function NameScreen({
             className="text-xs uppercase tracking-widest"
             style={{ color: "var(--muted)", fontWeight: 600 }}
           >
-            Round 1 &middot; Solo
+            Round 1 &middot; {mode === "solo" ? "Solo" : "Pass & Play"}
           </span>
         </div>
 
@@ -162,6 +173,23 @@ export function NameScreen({
               }}
             />
           </label>
+
+          <div className="flex gap-2">
+            {(["solo", "pass"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className="lang-btn flex-1 rounded-full py-2.5 text-sm font-bold"
+                style={{
+                  border: "2px solid var(--ink)",
+                  background: mode === m ? "var(--pink)" : "transparent",
+                  color: "var(--ink)",
+                }}
+              >
+                {m === "solo" ? "Solo" : "Play with a friend"}
+              </button>
+            ))}
+          </div>
 
           <div className="flex gap-2">
             {(["english", "hinglish"] as const).map((lang) => (
