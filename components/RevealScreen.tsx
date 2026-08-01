@@ -6,11 +6,18 @@ import { api } from "@/convex/_generated/api";
 import {
   FilmSprocket,
   DialogueBlock,
+  ScatteredDialogue,
   FOOTER_DIALOGUE_LINES,
 } from "./FilmDecor";
 
 type Answer = { prompt: string; text: string };
 type Highlight = Answer & { note: string };
+
+const HEADER_LINES = [
+  "SCENE ENDS · ROLL CREDITS · TAKE A BOW",
+  "THE REVIEWS ARE IN · CRITICS ARE TALKING",
+  "THAT'S A WRAP · HOUSE LIGHTS UP",
+];
 
 function downloadCsv(name: string, answers: Answer[]) {
   const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
@@ -84,32 +91,62 @@ export function RevealScreen({
     : `I answered ${count} in 60 seconds on THE NEELAM SHOW \u{1F440}`;
 
   return (
-    <div className="flex min-h-screen flex-col items-center">
+    <div className="relative flex min-h-screen flex-col items-center overflow-hidden">
+      <ScatteredDialogue />
       <FilmSprocket />
 
-      <div className="flex w-full max-w-[560px] flex-1 flex-col items-center px-6 py-10">
-        <p className="bebas text-xl" style={{ color: "var(--accent)" }}>
-          {name} answered
-        </p>
-
-        <div className="relative flex flex-col items-center py-4">
+      <div className="relative z-10 flex w-full max-w-[560px] flex-1 flex-col items-center px-6 py-10">
+        <div
+          className="fade-in-up flex items-center gap-2 pb-4"
+          style={{ animationDelay: "0ms" }}
+        >
           <div
-            className="absolute rounded-full"
+            className="h-2 w-2 rounded-full"
             style={{
-              top: -40,
-              width: 320,
-              height: 320,
-              background:
-                "radial-gradient(circle, var(--accent-glow) 0%, transparent 70%)",
-              animation: "glowPulse 4s ease-in-out infinite",
-              pointerEvents: "none",
+              background: "var(--accent)",
+              animation: "badgePulse 2s ease-in-out infinite",
             }}
           />
-          <div className="bebas relative text-9xl">{displayCount}</div>
+          <span
+            className="text-xs uppercase tracking-widest"
+            style={{ color: "oklch(0.7 0.02 60)" }}
+          >
+            The Reveal
+          </span>
         </div>
-        <p className="text-lg" style={{ color: "oklch(0.9 0.01 75)" }}>
-          in 60 seconds
-        </p>
+
+        <div className="relative flex w-full flex-col items-center overflow-hidden py-2">
+          <DialogueBlock lines={HEADER_LINES} rotate={-3} fontSize={24} />
+
+          <p
+            className="fade-in-up bebas relative text-xl"
+            style={{ color: "var(--accent)", animationDelay: "60ms" }}
+          >
+            {name} answered
+          </p>
+
+          <div className="relative flex flex-col items-center py-4">
+            <div
+              className="absolute rounded-full"
+              style={{
+                top: -40,
+                width: 320,
+                height: 320,
+                background:
+                  "radial-gradient(circle, var(--accent-glow) 0%, transparent 70%)",
+                animation: "glowPulse 4s ease-in-out infinite",
+                pointerEvents: "none",
+              }}
+            />
+            <div className="bebas relative text-9xl">{displayCount}</div>
+          </div>
+          <p
+            className="fade-in-up relative text-lg"
+            style={{ color: "oklch(0.9 0.01 75)", animationDelay: "120ms" }}
+          >
+            in 60 seconds
+          </p>
+        </div>
 
         <div
           className="mt-6 min-h-[3.5rem] max-w-sm px-2 text-center text-lg italic transition-opacity duration-500"
@@ -125,11 +162,12 @@ export function RevealScreen({
           {highlights.map((h, i) => (
             <div
               key={i}
-              className="flex overflow-hidden rounded-2xl border"
+              className="fade-in-up flex overflow-hidden rounded-2xl border"
               style={{
                 borderColor: "var(--accent)",
                 background:
                   "linear-gradient(180deg, oklch(0.2 0.03 40) 0%, oklch(0.13 0.02 40) 100%)",
+                animationDelay: `${200 + i * 120}ms`,
               }}
             >
               <div className="flex flex-1 flex-col gap-1 p-4">
