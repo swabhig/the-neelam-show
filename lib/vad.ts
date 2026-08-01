@@ -47,11 +47,16 @@ export function createVAD(
   }
   rafId = requestAnimationFrame(tick);
 
+  let stopped = false;
   return {
     stop() {
+      if (stopped) return;
+      stopped = true;
       cancelAnimationFrame(rafId);
       source.disconnect();
-      audioContext.close();
+      if (audioContext.state !== "closed") {
+        audioContext.close();
+      }
     },
   };
 }
