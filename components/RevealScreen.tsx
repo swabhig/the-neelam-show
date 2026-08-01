@@ -88,28 +88,25 @@ export function RevealScreen({
     <div
       className="relative flex min-h-screen flex-col items-center overflow-hidden px-5"
       style={{
-        background: "oklch(0.1 0.015 40)",
-        color: "oklch(0.96 0.015 75)",
+        background: "var(--bg)",
+        color: "var(--ink)",
         paddingTop: 56,
         paddingBottom: 64,
       }}
     >
       <div
-        className="absolute rounded-full"
-        style={{
-          top: "10%",
-          left: "50%",
-          width: 600,
-          height: 600,
-          transform: "translateX(-50%)",
-          background: "radial-gradient(circle, var(--accent-glow) 0%, transparent 70%)",
-          pointerEvents: "none",
-        }}
+        className="pointer-events-none absolute rounded-full"
+        style={{ top: -140, left: -120, width: 320, height: 320, background: "var(--orange)", opacity: 0.35 }}
       />
+      <div
+        className="pointer-events-none absolute rounded-full"
+        style={{ bottom: -160, right: -120, width: 320, height: 320, background: "var(--blue)", opacity: 0.25 }}
+      />
+      <div className="halftone pointer-events-none absolute inset-0" />
 
       <span
-        className="relative mb-6 text-xs uppercase tracking-[0.25em]"
-        style={{ color: "oklch(0.6 0.02 60)" }}
+        className="relative mb-6 text-xs font-semibold uppercase tracking-[0.25em]"
+        style={{ color: "var(--muted)" }}
       >
         Screenshot this &middot; flex before it&apos;s cool
       </span>
@@ -119,38 +116,37 @@ export function RevealScreen({
         style={{
           maxWidth: 440,
           aspectRatio: "4 / 5",
-          border: "1px solid var(--accent)",
+          border: "2px solid var(--ink)",
           borderRadius: 22,
-          background:
-            "linear-gradient(165deg, oklch(0.17 0.025 40) 0%, oklch(0.08 0.015 40) 100%)",
-          boxShadow: "0 40px 90px oklch(0 0 0 / 0.55)",
+          background: "var(--card)",
+          boxShadow: "6px 6px 0 var(--ink)",
           isolation: "isolate",
         }}
       >
         <div className="pointer-events-none absolute inset-0" style={{ opacity: 0.5 }}>
           <span
-            className="bebas absolute whitespace-nowrap"
+            className="display absolute whitespace-nowrap"
             style={{
               top: "6%",
               left: "-4%",
               transform: "rotate(-12deg)",
               fontSize: 15,
               letterSpacing: "0.05em",
-              color: "oklch(0.95 0.01 80)",
+              color: "var(--ink)",
               opacity: 0.06,
             }}
           >
             कोई रिटेक नहीं होगा
           </span>
           <span
-            className="bebas absolute whitespace-nowrap"
+            className="display absolute whitespace-nowrap"
             style={{
               bottom: "10%",
               right: "-6%",
               transform: "rotate(9deg)",
               fontSize: 13,
               letterSpacing: "0.05em",
-              color: "oklch(0.95 0.01 80)",
+              color: "var(--ink)",
               opacity: 0.05,
             }}
           >
@@ -159,15 +155,15 @@ export function RevealScreen({
         </div>
 
         <div className="relative flex items-center justify-between px-6 pt-6">
-          <span className="bebas text-lg" style={{ letterSpacing: "0.05em" }}>
+          <span className="display text-lg" style={{ letterSpacing: "0.03em" }}>
             THE NEELAM SHOW
           </span>
           <span
-            className="rounded-full border px-3 py-1 text-xs uppercase"
+            className="rounded-full px-3 py-1 text-xs font-bold uppercase"
             style={{
               letterSpacing: "0.15em",
               color: "var(--accent)",
-              borderColor: "var(--accent)",
+              border: "2px solid var(--accent)",
             }}
           >
             Opening Night
@@ -175,28 +171,26 @@ export function RevealScreen({
         </div>
 
         <div className="relative flex flex-1 flex-col items-center justify-center px-7 pb-2 pt-6">
-          <div className="relative w-full" style={{ maxWidth: 290 }}>
-            <div style={{ height: 30, overflow: "hidden", borderRadius: "6px 6px 0 0" }}>
-              <div
-                className="clapper-arm"
-                style={{
-                  height: 30,
-                  width: "100%",
-                  borderRadius: "6px 6px 0 0",
-                  border: "1px solid var(--accent)",
-                  background:
-                    "repeating-linear-gradient(-35deg, var(--accent) 0 16px, oklch(0.08 0.015 40) 16px 32px)",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
+          <div className="relative w-full" style={{ maxWidth: 290, paddingTop: 14 }}>
+            <div
+              className="clapper-arm"
+              style={{
+                height: 30,
+                width: "100%",
+                borderRadius: "6px 6px 0 0",
+                border: "2px solid var(--ink)",
+                background:
+                  "repeating-linear-gradient(-35deg, var(--orange) 0 16px, var(--ink) 16px 32px)",
+                boxSizing: "border-box",
+              }}
+            />
             <div
               className="relative flex flex-col items-center"
               style={{
-                border: "1px solid var(--accent)",
+                border: "2px solid var(--ink)",
                 borderTop: "none",
                 borderRadius: "0 0 10px 10px",
-                background: "oklch(0.14 0.02 40 / 0.6)",
+                background: "var(--card-alt)",
                 padding: "30px 22px 26px",
               }}
             >
@@ -210,20 +204,20 @@ export function RevealScreen({
                 }}
               />
               <span
-                className="bebas relative"
-                style={{ fontSize: 96, lineHeight: 0.85, color: "oklch(0.99 0.005 85)" }}
+                className="display relative"
+                style={{ fontSize: 90, lineHeight: 0.85, color: "var(--ink)" }}
               >
                 {count}
               </span>
               <span
-                className="relative mt-2.5 text-xs uppercase"
-                style={{ letterSpacing: "0.15em", color: "oklch(0.6 0.02 60)" }}
+                className="relative mt-2.5 text-xs font-bold uppercase"
+                style={{ letterSpacing: "0.15em", color: "var(--muted)" }}
               >
                 answered in 60 seconds
               </span>
               {fasterThanAvg !== null && (
                 <span
-                  className="relative mt-1 text-xs"
+                  className="relative mt-1 text-xs font-bold"
                   style={{ color: "var(--accent)" }}
                 >
                   &#9650; {fasterThanAvg}% faster than average
@@ -234,16 +228,16 @@ export function RevealScreen({
 
           <p
             className="relative mt-4 text-xs uppercase tracking-wide"
-            style={{ color: "oklch(0.55 0.02 60)" }}
+            style={{ color: "var(--muted-soft)" }}
           >
             no right or wrong answers &middot; it&apos;s rapid fire
           </p>
 
           <p
-            className="mt-6 text-center italic"
+            className="mt-5 text-center italic"
             style={{
               fontFamily: "var(--font-cormorant-garamond), serif",
-              fontSize: 23,
+              fontSize: 22,
               lineHeight: 1.35,
               color: "var(--accent)",
               maxWidth: 320,
@@ -259,14 +253,14 @@ export function RevealScreen({
 
         <div
           className="relative flex items-center justify-between gap-3.5 px-6 py-5"
-          style={{ borderTop: "1px solid oklch(0.3 0.02 40 / 0.6)" }}
+          style={{ borderTop: "2px solid var(--ink)" }}
         >
-          <span className="text-sm italic" style={{ color: "oklch(0.75 0.02 60)" }}>
+          <span className="text-sm italic" style={{ color: "var(--muted)" }}>
             {hookLine}
           </span>
           <span
             className="whitespace-nowrap text-xs"
-            style={{ letterSpacing: "0.06em", color: "oklch(0.6 0.02 60)" }}
+            style={{ letterSpacing: "0.06em", color: "var(--muted-soft)" }}
           >
             {WATERMARK}
           </span>
@@ -278,8 +272,8 @@ export function RevealScreen({
           href={shareX}
           target="_blank"
           rel="noreferrer"
-          className="poster-action-btn poster-action-outline flex-1 rounded-full border py-3.5 text-center text-sm font-semibold"
-          style={{ borderColor: "oklch(0.4 0.02 40)", color: "oklch(0.85 0.01 75)" }}
+          className="poster-action-btn flex-1 rounded-full py-3.5 text-center text-sm font-bold"
+          style={{ border: "2px solid var(--ink)", color: "var(--ink)" }}
         >
           Share on X
         </a>
@@ -287,8 +281,8 @@ export function RevealScreen({
           href={shareWhatsapp}
           target="_blank"
           rel="noreferrer"
-          className="poster-action-btn poster-action-outline flex-1 rounded-full border py-3.5 text-center text-sm font-semibold"
-          style={{ borderColor: "oklch(0.4 0.02 40)", color: "oklch(0.85 0.01 75)" }}
+          className="poster-action-btn flex-1 rounded-full py-3.5 text-center text-sm font-bold"
+          style={{ border: "2px solid var(--ink)", color: "var(--ink)" }}
         >
           Share on WhatsApp
         </a>
@@ -296,8 +290,14 @@ export function RevealScreen({
 
       <button
         onClick={onPlayAgain}
-        className="poster-action-btn poster-play-again relative mt-3.5 w-full rounded-full py-4.5 text-lg font-bold"
-        style={{ maxWidth: 440, background: "var(--accent)", color: "oklch(0.15 0.02 40)" }}
+        className="poster-action-btn relative mt-3.5 w-full rounded-full py-4.5 text-lg font-extrabold"
+        style={{
+          maxWidth: 440,
+          background: "var(--accent)",
+          color: "var(--card)",
+          border: "2px solid var(--ink)",
+          boxShadow: "4px 4px 0 var(--ink)",
+        }}
       >
         Play Again
       </button>
@@ -306,7 +306,7 @@ export function RevealScreen({
         <button
           onClick={() => downloadCsv(name, answers)}
           className="relative mt-4 text-sm underline"
-          style={{ color: "oklch(0.55 0.02 60)" }}
+          style={{ color: "var(--muted)" }}
         >
           Download all {answers.length} answers (CSV)
         </button>

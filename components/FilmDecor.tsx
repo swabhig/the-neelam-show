@@ -27,11 +27,11 @@ function WordSpan({
 
   return (
     <span
-      className="filmy-word bebas"
+      className="filmy-word display"
       onClick={handleTap}
       style={{
         fontSize,
-        color: "oklch(0.98 0.01 80)",
+        color: "var(--ink)",
         opacity: tapped ? peak : opacity,
         transition: tapped ? "opacity 0.15s ease" : "opacity 0.8s ease-in-out",
       }}

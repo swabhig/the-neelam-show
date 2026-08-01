@@ -1,18 +1,26 @@
 @import "tailwindcss";
 
 :root {
-  --accent: oklch(0.78 0.14 85);
-  --accent-glow: oklch(0.78 0.14 85 / 0.35);
-  --bg: oklch(0.15 0.025 40);
-  --ink: oklch(0.96 0.015 75);
+  --bg: #f7e3d8;
+  --card: #fff8f0;
+  --card-alt: #fceedf;
+  --ink: #2b1710;
+  --accent: #d6483f;
+  --accent-glow: rgba(214, 72, 63, 0.35);
+  --pink: #e0447b;
+  --orange: #f2a33c;
+  --blue: #3e6fa6;
+  --muted: #6b4230;
+  --muted-soft: #8a6650;
+  --body-text: #4a2a1b;
 }
 
 @theme inline {
   --color-accent: var(--accent);
   --color-bg: var(--bg);
   --color-ink: var(--ink);
-  --font-bebas: var(--font-bebas-neue);
-  --font-sans: var(--font-space-grotesk);
+  --font-display: var(--font-kavoon);
+  --font-sans: var(--font-poppins);
 }
 
 * {
@@ -23,18 +31,25 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: var(--font-space-grotesk), sans-serif;
+  font-family: var(--font-poppins), sans-serif;
 }
 
-.bebas {
-  font-family: var(--font-bebas-neue), sans-serif;
-  letter-spacing: 0.02em;
+a {
+  color: var(--accent);
+}
+a:hover {
+  color: var(--pink);
+}
+
+.display {
+  font-family: var(--font-kavoon), serif;
+  letter-spacing: 0.01em;
 }
 
 .sprocket {
   width: 100%;
   height: 14px;
-  background-color: oklch(0.08 0.01 40);
+  background-color: var(--ink);
   background-image: radial-gradient(
     circle at 10px 50%,
     var(--bg) 5px,
@@ -43,23 +58,28 @@ body {
   background-size: 26px 100%;
 }
 
+.halftone {
+  background-image: radial-gradient(var(--ink) 1px, transparent 1.5px);
+  background-size: 22px 22px;
+  opacity: 0.05;
+}
+
 @keyframes glowPulse {
   0%,
   100% {
-    opacity: 0.55;
+    opacity: 0.5;
   }
   50% {
-    opacity: 0.9;
+    opacity: 0.85;
   }
 }
 
-@keyframes floatSlow {
-  0%,
-  100% {
-    transform: translateY(0px);
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
   }
-  50% {
-    transform: translateY(-8px);
+  to {
+    transform: rotate(360deg);
   }
 }
 
@@ -78,7 +98,7 @@ body {
   cursor: default;
 }
 .filmy-word:hover {
-  opacity: 0.35 !important;
+  opacity: 0.5 !important;
   transition: opacity 0.15s ease !important;
 }
 
@@ -110,36 +130,45 @@ body {
 
 @keyframes clapDown {
   0% {
-    transform: scaleY(0.15);
-    opacity: 0.3;
+    transform: rotate(-16deg);
+  }
+  60% {
+    transform: rotate(2deg);
+  }
+  80% {
+    transform: rotate(-2deg);
   }
   100% {
-    transform: scaleY(1);
-    opacity: 1;
+    transform: rotate(0deg);
   }
 }
 
 .clapper-arm {
-  animation: clapDown 0.4s ease-out 0.3s both;
-  transform-origin: 50% 100%;
+  animation: clapDown 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both;
+  transform-origin: 6% 100%;
 }
 
 .poster-action-btn {
   transition:
     transform 0.15s ease,
-    filter 0.15s ease,
-    background 0.15s ease,
-    color 0.15s ease,
-    border-color 0.15s ease;
+    filter 0.15s ease;
 }
 .poster-action-btn:hover {
   transform: translateY(-2px);
 }
-.poster-action-outline:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: oklch(0.15 0.02 40) !important;
+
+.end-btn {
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
-.poster-play-again:hover {
-  filter: brightness(1.1);
+.end-btn:hover {
+  background: var(--ink);
+  color: var(--card);
+}
+
+.lang-btn {
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }

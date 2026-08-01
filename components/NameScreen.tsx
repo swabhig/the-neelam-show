@@ -13,9 +13,9 @@ import {
 } from "./FilmDecor";
 
 const EXAMPLE_PAIRS = [
-  { a: "Chai", b: "Sutta" },
-  { a: "Shaadi", b: "Bhaagna" },
-  { a: "Ex", b: "Delete" },
+  { a: "Chai", b: "Sutta", bg: "var(--pink)" },
+  { a: "Shaadi", b: "Bhaagna", bg: "var(--orange)" },
+  { a: "Ex", b: "Delete", bg: "var(--blue)" },
 ];
 
 export function NameScreen({
@@ -38,6 +38,20 @@ export function NameScreen({
 
   return (
     <div className="relative flex min-h-screen flex-col items-center overflow-hidden">
+      <div
+        className="pointer-events-none absolute rounded-full"
+        style={{ top: -120, left: -120, width: 300, height: 300, background: "var(--orange)", opacity: 0.5, filter: "blur(2px)" }}
+      />
+      <div
+        className="pointer-events-none absolute rounded-full"
+        style={{ top: -80, right: -100, width: 260, height: 260, background: "var(--pink)", opacity: 0.35 }}
+      />
+      <div
+        className="pointer-events-none absolute rounded-full"
+        style={{ bottom: -100, left: -60, width: 240, height: 240, background: "var(--blue)", opacity: 0.25 }}
+      />
+      <div className="halftone pointer-events-none absolute inset-0" />
+
       <ScatteredDialogue />
       <FilmSprocket />
 
@@ -55,7 +69,7 @@ export function NameScreen({
           />
           <span
             className="text-xs uppercase tracking-widest"
-            style={{ color: "oklch(0.7 0.02 60)" }}
+            style={{ color: "var(--muted)", fontWeight: 600 }}
           >
             Round 1 &middot; Solo
           </span>
@@ -63,37 +77,43 @@ export function NameScreen({
 
         <div className="relative flex w-full flex-col items-center overflow-hidden py-8 text-center">
           <div
-            className="absolute rounded-full"
+            className="pointer-events-none absolute rounded-full"
             style={{
-              top: -60,
-              width: 420,
-              maxWidth: "90vw",
-              height: 420,
+              top: -20,
+              width: 460,
+              maxWidth: "100vw",
+              height: 460,
               background:
-                "radial-gradient(circle, var(--accent-glow) 0%, transparent 70%)",
-              animation: "glowPulse 4s ease-in-out infinite",
-              pointerEvents: "none",
+                "repeating-conic-gradient(from 0deg, var(--orange) 0deg 8deg, transparent 8deg 20deg)",
+              opacity: 0.18,
+              animation: "spin 60s linear infinite",
             }}
           />
           <DialogueBlock lines={HEADER_DIALOGUE_LINES} rotate={-4} />
 
+          <svg width="52" height="30" viewBox="0 0 46 34" className="relative mb-3.5">
+            <rect x="1" y="9" width="44" height="24" rx="2" fill="none" stroke="var(--accent)" strokeWidth="1.6" />
+            <rect x="1" y="1" width="44" height="8" rx="1.5" fill="var(--accent)" />
+            <path d="M4 1 L10 9 M13 1 L19 9 M22 1 L28 9 M31 1 L37 9 M40 1 L44 8" stroke="var(--bg)" strokeWidth="2" />
+          </svg>
+
           <h1
-            className="fade-in-up bebas relative text-6xl leading-none sm:text-7xl"
-            style={{ animationDelay: "100ms" }}
+            className="fade-in-up display relative text-6xl leading-none sm:text-7xl"
+            style={{ animationDelay: "100ms", textShadow: "3px 3px 0 var(--orange)" }}
           >
             THE NEELAM
             <br />
             SHOW
           </h1>
           <p
-            className="fade-in-up relative mt-4 text-sm uppercase tracking-wide"
+            className="fade-in-up relative mt-4.5 text-sm font-bold uppercase tracking-wide"
             style={{ color: "var(--accent)", animationDelay: "220ms" }}
           >
             a party game for people who talk before they think
           </p>
           <p
-            className="fade-in-up relative mt-5 max-w-xs text-lg"
-            style={{ color: "oklch(0.9 0.01 75)", animationDelay: "320ms" }}
+            className="fade-in-up relative mt-4 max-w-xs text-lg"
+            style={{ color: "var(--body-text)", animationDelay: "320ms" }}
           >
             One word. Zero thinking time. What should we call you?
           </p>
@@ -106,31 +126,27 @@ export function NameScreen({
           {EXAMPLE_PAIRS.map((pair) => (
             <div
               key={pair.a}
-              className="rounded-full border px-4 py-2 text-sm"
-              style={{
-                background: "oklch(0.2 0.03 40)",
-                borderColor: "oklch(0.32 0.02 40)",
-                color: "oklch(0.88 0.01 75)",
-              }}
+              className="rounded-full px-4 py-2 text-sm font-semibold"
+              style={{ background: pair.bg, color: "var(--card)" }}
             >
-              {pair.a} <span style={{ color: "var(--accent)" }}>&rarr;</span>{" "}
-              {pair.b}
+              {pair.a} <span style={{ opacity: 0.8 }}>&rarr;</span> {pair.b}
             </div>
           ))}
         </div>
 
         <div
-          className="fade-in-up flex w-full max-w-sm flex-col gap-4 rounded-2xl border p-7"
+          className="fade-in-up flex w-full max-w-sm flex-col gap-4 rounded-[22px] p-7"
           style={{
-            background: "oklch(0.19 0.028 40)",
-            borderColor: "oklch(0.3 0.02 40)",
+            background: "var(--card)",
+            border: "2px solid var(--ink)",
+            boxShadow: "6px 6px 0 var(--ink)",
             animationDelay: "480ms",
           }}
         >
           <label className="flex flex-col gap-1.5 text-left">
             <span
-              className="text-xs uppercase tracking-wide"
-              style={{ color: "oklch(0.65 0.02 60)" }}
+              className="text-xs font-bold uppercase tracking-wide"
+              style={{ color: "var(--muted)" }}
             >
               Your Name
             </span>
@@ -138,10 +154,10 @@ export function NameScreen({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Priya"
-              className="rounded-lg border px-4 py-3 text-base"
+              className="rounded-xl px-4 py-3 text-base"
               style={{
-                background: "oklch(0.14 0.02 40)",
-                borderColor: "oklch(0.35 0.02 40)",
+                background: "#fff",
+                border: "2px solid var(--ink)",
                 color: "var(--ink)",
               }}
             />
@@ -152,15 +168,11 @@ export function NameScreen({
               <button
                 key={lang}
                 onClick={() => setLanguage(lang)}
-                className="flex-1 rounded-full border px-4 py-2 text-sm font-semibold"
+                className="lang-btn flex-1 rounded-full py-2.5 text-sm font-bold"
                 style={{
-                  borderColor: "var(--accent)",
-                  background:
-                    language === lang ? "var(--accent)" : "transparent",
-                  color:
-                    language === lang
-                      ? "oklch(0.15 0.02 40)"
-                      : "var(--ink)",
+                  border: "2px solid var(--ink)",
+                  background: language === lang ? "var(--orange)" : "transparent",
+                  color: "var(--ink)",
                 }}
               >
                 {lang === "english" ? "English" : "Hindi + English"}
@@ -171,8 +183,13 @@ export function NameScreen({
           <button
             onClick={handleStart}
             disabled={!name.trim()}
-            className="mt-1 rounded-full py-4 text-lg font-bold disabled:opacity-40"
-            style={{ background: "var(--accent)", color: "oklch(0.15 0.02 40)" }}
+            className="poster-action-btn mt-1 rounded-full py-4 text-lg font-extrabold disabled:opacity-40"
+            style={{
+              background: "var(--accent)",
+              color: "var(--card)",
+              border: "2px solid var(--ink)",
+              boxShadow: "4px 4px 0 var(--ink)",
+            }}
           >
             Start &rarr;
           </button>
@@ -181,20 +198,20 @@ export function NameScreen({
         <div className="relative mt-14 flex w-full flex-col items-center gap-3 overflow-hidden py-10 text-center">
           <DialogueBlock lines={FOOTER_DIALOGUE_LINES} rotate={3} fontSize={22} />
           <span
-            className="relative text-xs uppercase tracking-widest"
+            className="relative text-xs font-bold uppercase tracking-widest"
             style={{ color: "var(--accent)" }}
           >
             why this game
           </span>
           <p
             className="relative max-w-sm text-sm"
-            style={{ color: "oklch(0.75 0.01 75)" }}
+            style={{ color: "var(--body-text)" }}
           >
             Inspired by the rapid-fire word-association scene from a
             beloved 90s Bollywood movie moment - rebuilt as an instant,
             voice-powered party game.
           </p>
-          <p className="relative text-xs" style={{ color: "oklch(0.5 0.02 60)" }}>
+          <p className="relative text-xs" style={{ color: "var(--muted-soft)" }}>
             Not affiliated with, endorsed by, or representing the
             original film, show, or cast.
           </p>

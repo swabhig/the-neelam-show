@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
-import { Bebas_Neue, Space_Grotesk, Cormorant_Garamond } from "next/font/google";
+import { Kavoon, Poppins, Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
 import { ConvexClientProvider } from "./ConvexClientProvider";
 
-const bebasNeue = Bebas_Neue({
+const kavoon = Kavoon({
   weight: "400",
   subsets: ["latin"],
-  variable: "--font-bebas-neue",
+  variable: "--font-kavoon",
 });
 
-const spaceGrotesk = Space_Grotesk({
+const poppins = Poppins({
+  weight: ["400", "500", "600", "700", "800"],
   subsets: ["latin"],
-  variable: "--font-space-grotesk",
+  variable: "--font-poppins",
 });
 
 const cormorantGaramond = Cormorant_Garamond({
@@ -34,7 +35,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${bebasNeue.variable} ${spaceGrotesk.variable} ${cormorantGaramond.variable}`}
+      className={`${kavoon.variable} ${poppins.variable} ${cormorantGaramond.variable}`}
     >
       <body>
         <ConvexClientProvider>{children}</ConvexClientProvider>

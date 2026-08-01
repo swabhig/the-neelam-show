@@ -188,33 +188,69 @@ export function PlayScreen({
   }, []);
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center gap-6 px-6 text-center">
+    <div className="relative flex min-h-screen flex-col items-center justify-center gap-6 overflow-hidden px-6 text-center">
+      <div
+        className="pointer-events-none absolute rounded-full"
+        style={{ top: -140, right: -140, width: 320, height: 320, background: "var(--pink)", opacity: 0.3 }}
+      />
+      <div
+        className="pointer-events-none absolute rounded-full"
+        style={{ bottom: -160, left: -140, width: 320, height: 320, background: "var(--blue)", opacity: 0.25 }}
+      />
+      <div className="halftone pointer-events-none absolute inset-0" />
+
       <button
         onClick={() => endRoundRef.current()}
-        className="absolute right-5 top-5 rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-wide"
-        style={{ borderColor: "oklch(0.4 0.02 40)", color: "oklch(0.65 0.02 60)" }}
+        className="end-btn absolute right-5 top-5 rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wide"
+        style={{ border: "2px solid var(--ink)", color: "var(--ink)" }}
       >
         End Round
       </button>
 
-      <div className="bebas leading-none" style={{ color: "var(--accent)", fontSize: "clamp(4rem, 22vw, 8rem)" }}>
-        {secondsLeft}s
+      <div className="relative flex items-center gap-4.5">
+        <div
+          className="flex flex-col items-center justify-center gap-1 rounded-[26px] px-10 py-6"
+          style={{ background: "var(--ink)" }}
+        >
+          <div className="display leading-none" style={{ color: "var(--orange)", fontSize: "clamp(4.25rem, 20vw, 6.5rem)" }}>
+            {secondsLeft}
+          </div>
+          <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--card-alt)" }}>
+            seconds
+          </span>
+        </div>
+        <div
+          className="flex h-[86px] w-[86px] flex-col items-center justify-center gap-0.5 rounded-full transition-transform duration-150"
+          style={{ background: "var(--pink)", boxShadow: "4px 4px 0 var(--ink)", transform: justScored ? "scale(1.25)" : "scale(1)" }}
+        >
+          <span className="display text-4xl leading-none" style={{ color: "var(--card)" }}>
+            {count}
+          </span>
+          <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--card-alt)" }}>
+            done
+          </span>
+        </div>
       </div>
-      <div
-        className="bebas text-5xl transition-transform duration-150"
-        style={{ transform: justScored ? "scale(1.25)" : "scale(1)" }}
-      >
-        {count}
-      </div>
-      <div className="bebas text-4xl">{currentPrompt}</div>
 
-      <div className="flex flex-col items-center gap-3">
+      <div className="relative flex flex-col items-center gap-2.5">
+        <span className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: "var(--muted)" }}>
+          say the first word
+        </span>
+        <div
+          className="display text-5xl leading-none"
+          style={{ color: "var(--accent)", textShadow: "3px 3px 0 var(--ink)" }}
+        >
+          {currentPrompt}
+        </div>
+      </div>
+
+      <div className="relative flex flex-col items-center gap-3">
         <div
           className="flex h-16 w-16 items-center justify-center rounded-full border-2 transition-all duration-150"
           style={{
-            borderColor: phase === "listening" ? "var(--accent)" : "oklch(0.4 0.02 40)",
+            borderColor: phase === "listening" ? "var(--accent)" : "var(--ink)",
             background: phase === "listening" ? "var(--accent-glow)" : "transparent",
-            boxShadow: phase === "listening" ? "0 0 24px var(--accent-glow)" : "none",
+            boxShadow: phase === "listening" ? "0 0 0 6px var(--accent-glow)" : "none",
           }}
         >
           <span className="text-2xl">
@@ -222,8 +258,8 @@ export function PlayScreen({
           </span>
         </div>
         <p
-          className="text-sm"
-          style={{ color: phase === "listening" ? "var(--accent)" : "oklch(0.65 0.02 60)" }}
+          className="text-sm font-semibold"
+          style={{ color: phase === "listening" ? "var(--accent)" : "var(--muted)" }}
         >
           {phase === "hostSpeaking"
             ? "host is talking…"
