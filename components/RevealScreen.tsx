@@ -67,6 +67,7 @@ export function RevealScreen({
     setFasterThanAvg(27 + Math.floor(Math.random() * 23));
   }, []);
   const updateAfterRound = useMutation(api.players.updateAfterRound);
+  const recordMatch = useMutation(api.matches.recordMatch);
 
   useEffect(() => {
     if (persist) {
@@ -74,6 +75,15 @@ export function RevealScreen({
         deviceId,
         score: count,
         wordsUsed: answers.map((a) => a.prompt),
+      });
+    }
+
+    if (opponent) {
+      recordMatch({
+        player1Name: name,
+        player1Score: count,
+        player2Name: opponent.name,
+        player2Score: opponent.count,
       });
     }
 
