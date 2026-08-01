@@ -28,21 +28,19 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function speakWithFloor(text: string, language: "english" | "hinglish") {
+async function speakWithFloor(text: string) {
   cancelSpeech();
   const floor = Math.max(MIN_SPEAK_FLOOR_MS, text.length * MIN_MS_PER_CHAR);
-  await Promise.all([speak(text, language), sleep(floor)]);
+  await Promise.all([speak(text), sleep(floor)]);
 }
 
 export function PlayScreen({
   name,
-  language,
   recentWords,
   onRoundEnd,
   roundSeconds = ROUND_SECONDS_DEFAULT,
 }: {
   name: string;
-  language: "english" | "hinglish";
   recentWords: string[];
   onRoundEnd: (result: {
     count: number;
@@ -109,7 +107,7 @@ export function PlayScreen({
 
         // Fire-and-forget: don't let TTS reliability affect the fixed
         // cadence at all, only use it to produce audio.
-        speakWithFloor(word, language);
+        speakWithFloor(word);
 
         const listenDelay = Math.max(
           400,
@@ -159,7 +157,7 @@ export function PlayScreen({
 
       endRoundRef.current = endRound;
 
-      await speakWithFloor(`Ready, ${name}?`, language);
+      await speakWithFloor(`Ready, ${name}?`);
       if (cancelled) return;
       runCycle();
 
@@ -168,7 +166,7 @@ export function PlayScreen({
         remaining -= 1;
         setSecondsLeft(remaining);
         if (remaining === 30 || remaining === 10) {
-          speak(`${remaining} seconds left`, language);
+          speak(`${remaining} seconds left`);
         }
         if (remaining <= 0) {
           endRound();

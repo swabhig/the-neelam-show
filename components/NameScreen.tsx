@@ -21,16 +21,9 @@ const EXAMPLE_PAIRS = [
 export function NameScreen({
   onStart,
 }: {
-  onStart: (
-    name: string,
-    language: "english" | "hinglish",
-    mode: "solo" | "pass"
-  ) => void;
+  onStart: (name: string, mode: "solo" | "pass") => void;
 }) {
   const [name, setName] = useState("");
-  const [language, setLanguage] = useState<"english" | "hinglish">(
-    "english"
-  );
   const [mode, setMode] = useState<"solo" | "pass">("solo");
   const getOrCreate = useMutation(api.players.getOrCreate);
 
@@ -44,7 +37,7 @@ export function NameScreen({
     if (mode === "solo") {
       await getOrCreate({ deviceId: getDeviceId(), name: trimmed });
     }
-    onStart(trimmed, language, mode);
+    onStart(trimmed, mode);
   }
 
   return (
@@ -187,23 +180,6 @@ export function NameScreen({
                 }}
               >
                 {m === "solo" ? "Solo" : "Play with a friend"}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex gap-2">
-            {(["english", "hinglish"] as const).map((lang) => (
-              <button
-                key={lang}
-                onClick={() => setLanguage(lang)}
-                className="lang-btn flex-1 rounded-full py-2.5 text-sm font-bold"
-                style={{
-                  border: "2px solid var(--ink)",
-                  background: language === lang ? "var(--orange)" : "transparent",
-                  color: "var(--ink)",
-                }}
-              >
-                {lang === "english" ? "English" : "Hindi + English"}
               </button>
             ))}
           </div>

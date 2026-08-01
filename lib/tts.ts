@@ -1,73 +1,52 @@
-function getVoicesAsync(): Promise<SpeechSynthesisVoice[]> {
+import { PROMPT_BANK } from "./prompts";
+import { slugify } from "./audioSlug";
+import { FIXED_PHRASES } from "./ttsPhrases";
+
+// Every text that got pre-generated as a static clip by
+// scripts/generate-tts.ts - anything not in this set falls back to a
+// live ElevenLabs call instead.
+const KNOWN_TEXTS = new Set<string>([
+  ...Object.values(PROMPT_BANK).flat(),
+  ...FIXED_PHRASES,
+]);
+
+let currentAudio: HTMLAudioElement | null = null;
+
+function playUrl(url: string): Promise<void> {
   return new Promise((resolve) => {
-    const existing = window.speechSynthesis.getVoices();
-    if (existing.length > 0) {
-      resolve(existing);
-      return;
-    }
-    // Voices load asynchronously on first page load in most browsers.
-    const handle = () => {
-      window.speechSynthesis.removeEventListener("voiceschanged", handle);
-      resolve(window.speechSynthesis.getVoices());
-    };
-    window.speechSynthesis.addEventListener("voiceschanged", handle);
-    // Fallback in case voiceschanged never fires on this browser.
-    setTimeout(() => resolve(window.speechSynthesis.getVoices()), 500);
+    const audio = new Audio(url);
+    currentAudio = audio;
+    audio.onended = () => resolve();
+    audio.onerror = () => resolve();
+    audio.play().catch(() => resolve());
   });
 }
 
-const voiceCache = new Map<string, SpeechSynthesisVoice | null>();
+export function speak(text: string): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
 
-async function pickVoice(
-  language: "english" | "hinglish"
-): Promise<SpeechSynthesisVoice | null> {
-  if (voiceCache.has(language)) return voiceCache.get(language)!;
-
-  const voices = await getVoicesAsync();
-  const preferredLangs =
-    language === "hinglish"
-      ? ["hi-IN", "hi", "en-IN"]
-      : ["en-IN", "en-GB", "en-US", "en"];
-
-  let chosen: SpeechSynthesisVoice | null = null;
-  for (const lang of preferredLangs) {
-    const match = voices.find((v) =>
-      v.lang.toLowerCase().startsWith(lang.toLowerCase())
-    );
-    if (match) {
-      chosen = match;
-      break;
-    }
+  const normalized = text.toLowerCase().trim();
+  if (KNOWN_TEXTS.has(normalized)) {
+    return playUrl(`/audio/${slugify(text)}.mp3`);
   }
 
-  voiceCache.set(language, chosen);
-  return chosen;
-}
-
-export function speak(
-  text: string,
-  language: "english" | "hinglish" = "english"
-): Promise<void> {
-  return new Promise((resolve) => {
-    if (typeof window === "undefined" || !window.speechSynthesis) {
-      resolve();
-      return;
-    }
-
-    pickVoice(language).then((voice) => {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = language === "hinglish" ? "hi-IN" : "en-IN";
-      if (voice) utterance.voice = voice;
-      utterance.rate = 1.1;
-      utterance.onend = () => resolve();
-      utterance.onerror = () => resolve();
-      window.speechSynthesis.speak(utterance);
-    });
-  });
+  // Dynamic text (the "Ready, {name}?" greeting) isn't pregenerated, so
+  // this goes to ElevenLabs live - acceptable here since it only happens
+  // once before the round's tight cadence begins, not mid-round.
+  return fetch("/api/tts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  })
+    .then((res) => res.blob())
+    .then((blob) => playUrl(URL.createObjectURL(blob)))
+    .catch(() => {});
 }
 
 export function cancelSpeech() {
-  if (typeof window !== "undefined" && window.speechSynthesis) {
-    window.speechSynthesis.cancel();
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+    currentAudio = null;
   }
 }
