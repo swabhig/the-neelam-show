@@ -42,6 +42,15 @@ export function RevealScreen({
     "Your brain, unfiltered, on opening night."
   );
   const [hookLine, setHookLine] = useState("tag someone who'd choke on round 1");
+  // Flavor stat only, not calculated from real data - there isn't enough
+  // real play history yet for a genuine "vs average" comparison to mean
+  // anything. Randomized once per reveal so it varies round to round.
+  // Generated client-side only (in an effect, not the initializer) so
+  // the server-rendered value can never mismatch the client's.
+  const [fasterThanAvg, setFasterThanAvg] = useState<number | null>(null);
+  useEffect(() => {
+    setFasterThanAvg(27 + Math.floor(Math.random() * 23));
+  }, []);
   const updateAfterRound = useMutation(api.players.updateAfterRound);
 
   useEffect(() => {
@@ -67,12 +76,12 @@ export function RevealScreen({
   const shareX =
     "https://twitter.com/intent/tweet?text=" +
     encodeURIComponent(
-      `I scored ${count}/${totalPrompts} on The Neelam Show — one word, zero thinking time. Beat me if you can.`
+      `I answered ${count} in 60 seconds on The Neelam Show — one word, zero thinking time, no right or wrong answers. Beat me if you can.`
     );
   const shareWhatsapp =
     "https://wa.me/?text=" +
     encodeURIComponent(
-      `I scored ${count}/${totalPrompts} on The Neelam Show — one word, zero thinking time. Beat me if you can 👀`
+      `I answered ${count} in 60 seconds on The Neelam Show — one word, zero thinking time, no right or wrong answers. Beat me if you can 👀`
     );
 
   return (
@@ -205,18 +214,30 @@ export function RevealScreen({
                 style={{ fontSize: 96, lineHeight: 0.85, color: "oklch(0.99 0.005 85)" }}
               >
                 {count}
-                <span style={{ fontSize: 36, color: "oklch(0.55 0.02 60)" }}>
-                  /{totalPrompts}
-                </span>
               </span>
               <span
                 className="relative mt-2.5 text-xs uppercase"
                 style={{ letterSpacing: "0.15em", color: "oklch(0.6 0.02 60)" }}
               >
-                correct in 60 seconds
+                answered in 60 seconds
               </span>
+              {fasterThanAvg !== null && (
+                <span
+                  className="relative mt-1 text-xs"
+                  style={{ color: "var(--accent)" }}
+                >
+                  &#9650; {fasterThanAvg}% faster than average
+                </span>
+              )}
             </div>
           </div>
+
+          <p
+            className="relative mt-4 text-xs uppercase tracking-wide"
+            style={{ color: "oklch(0.55 0.02 60)" }}
+          >
+            no right or wrong answers &middot; it&apos;s rapid fire
+          </p>
 
           <p
             className="mt-6 text-center italic"
