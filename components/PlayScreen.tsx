@@ -38,6 +38,7 @@ export function PlayScreen({
   name,
   recentWords,
   onRoundEnd,
+  onScore,
   roundSeconds = ROUND_SECONDS_DEFAULT,
 }: {
   name: string;
@@ -47,6 +48,9 @@ export function PlayScreen({
     totalPrompts: number;
     answers: Answer[];
   }) => void;
+  /** Remote mode only: fired every time the live count changes, so the
+   * parent can push it to the shared room for the opponent to see. */
+  onScore?: (count: number) => void;
   /** Override for testing - defaults to the real 60s round. */
   roundSeconds?: number;
 }) {
@@ -86,6 +90,7 @@ export function PlayScreen({
 
         liveCount += 1;
         setCount(liveCount);
+        onScore?.(liveCount);
         answers.push({ prompt, text: cleaned });
 
         setJustScored(true);

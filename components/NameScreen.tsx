@@ -21,10 +21,10 @@ const EXAMPLE_PAIRS = [
 export function NameScreen({
   onStart,
 }: {
-  onStart: (name: string, mode: "solo" | "pass") => void;
+  onStart: (name: string, mode: "solo" | "pass" | "remote") => void;
 }) {
   const [name, setName] = useState("");
-  const [mode, setMode] = useState<"solo" | "pass">("solo");
+  const [mode, setMode] = useState<"solo" | "pass" | "remote">("solo");
   const [isIOS, setIsIOS] = useState(false);
   const getOrCreate = useMutation(api.players.getOrCreate);
 
@@ -38,15 +38,16 @@ export function NameScreen({
   async function handleStart() {
     const trimmed = name.trim();
     if (!trimmed) return;
-    // Pass & play is a shared-device session between two people, so it
-    // never touches Convex - saving a score there would overwrite
-    // whichever one person's personal-best is meant to live on this
-    // device with the other player's number.
+    // Pass & play and remote both skip Convex's personal-best table -
+    // pass & play because it's a shared device between two people,
+    // remote because a match isn't tied to one person's device either.
     if (mode === "solo") {
       await getOrCreate({ deviceId: getDeviceId(), name: trimmed });
     }
     onStart(trimmed, mode);
   }
+
+  const modeLabel = mode === "solo" ? "Solo" : mode === "pass" ? "vs" : "Remote-play";
 
   return (
     <div className="relative flex min-h-screen flex-col items-center overflow-hidden">
@@ -83,7 +84,7 @@ export function NameScreen({
             className="text-xs uppercase tracking-widest"
             style={{ color: "var(--muted)", fontWeight: 600 }}
           >
-            Round 1 &middot; {mode === "solo" ? "Solo" : "vs"}
+            Round 1 &middot; {modeLabel}
           </span>
         </div>
 
@@ -191,18 +192,18 @@ export function NameScreen({
           </label>
 
           <div className="flex gap-2">
-            {(["solo", "pass"] as const).map((m) => (
+            {(["solo", "pass", "remote"] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => setMode(m)}
-                className="lang-btn flex-1 rounded-full py-2.5 text-sm font-bold"
+                className="lang-btn flex-1 rounded-full py-2.5 text-xs font-bold sm:text-sm"
                 style={{
                   border: "2px solid var(--ink)",
                   background: mode === m ? "var(--pink)" : "transparent",
                   color: "var(--ink)",
                 }}
               >
-                {m === "solo" ? "Solo" : "vs"}
+                {m === "solo" ? "Solo" : m === "pass" ? "vs" : "Remote-play"}
               </button>
             ))}
           </div>

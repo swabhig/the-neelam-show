@@ -1,5 +1,5 @@
-import { Game } from "@/components/Game";
+import { AppRouter } from "@/components/AppRouter";
 
 export default function Home() {
-  return <Game />;
+  return <AppRouter />;
 }

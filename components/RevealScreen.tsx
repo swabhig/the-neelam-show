@@ -40,6 +40,8 @@ export function RevealScreen({
   answers,
   opponent,
   persist = true,
+  remoteVerdict,
+  basketballScore,
   onPlayAgain,
 }: {
   name: string;
@@ -47,16 +49,27 @@ export function RevealScreen({
   count: number;
   totalPrompts: number;
   answers: Answer[];
-  /** Present only in pass-and-play mode, for the head-to-head result. */
+  /** Present for pass-and-play (shared device) and remote (separate
+   * devices) modes, for the head-to-head result. */
   opponent?: PlayerResult;
-  /** Solo mode saves to Convex; pass-and-play (shared device) never does. */
+  /** Solo mode saves to Convex; pass-and-play and remote never do. */
   persist?: boolean;
+  /** Remote mode only: the verdict lives on the shared room doc, written
+   * once by whichever player finishes second, so both sides see the
+   * identical text - pass `null` while waiting for it to arrive, or omit
+   * this prop entirely for solo/pass-and-play (which fetch their own). */
+  remoteVerdict?: { verdict: string; hookLine: string } | null;
+  /** Remote mode only: baskets sunk in the mini-game while waiting. */
+  basketballScore?: number;
   onPlayAgain: () => void;
 }) {
+  const isRemote = remoteVerdict !== undefined;
   const [verdict, setVerdict] = useState(
     "Your brain, unfiltered, on opening night."
   );
   const [hookLine, setHookLine] = useState("tag someone who'd choke on round 1");
+  const displayVerdict = isRemote ? (remoteVerdict?.verdict ?? "revealing…") : verdict;
+  const displayHookLine = isRemote ? (remoteVerdict?.hookLine ?? "") : hookLine;
   // Flavor stat only, not calculated from real data - there isn't enough
   // real play history yet for a genuine "vs average" comparison to mean
   // anything. Randomized once per reveal so it varies round to round.
@@ -78,7 +91,7 @@ export function RevealScreen({
       });
     }
 
-    if (opponent) {
+    if (opponent && !isRemote) {
       recordMatch({
         player1Name: name,
         player1Score: count,
@@ -87,16 +100,18 @@ export function RevealScreen({
       });
     }
 
-    fetch("/api/verdict", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, answers }),
-    })
-      .then((res) => res.json())
-      .then((data: { verdict: string; hookLine: string }) => {
-        setVerdict(data.verdict);
-        setHookLine(data.hookLine);
-      });
+    if (!isRemote) {
+      fetch("/api/verdict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, answers }),
+      })
+        .then((res) => res.json())
+        .then((data: { verdict: string; hookLine: string }) => {
+          setVerdict(data.verdict);
+          setHookLine(data.hookLine);
+        });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -295,6 +310,15 @@ export function RevealScreen({
             no right or wrong answers &middot; it&apos;s rapid fire
           </p>
 
+          {basketballScore !== undefined && basketballScore > 0 && (
+            <p
+              className="relative mt-1 text-xs font-bold"
+              style={{ color: "var(--muted)" }}
+            >
+              &#127936; sank {basketballScore} while waiting
+            </p>
+          )}
+
           <p
             className="mt-5 text-center italic"
             style={{
@@ -309,7 +333,7 @@ export function RevealScreen({
               overflow: "hidden",
             }}
           >
-            {verdict}
+            {displayVerdict}
           </p>
         </div>
 
@@ -318,7 +342,7 @@ export function RevealScreen({
           style={{ borderTop: "2px solid var(--ink)" }}
         >
           <span className="text-sm italic" style={{ color: "var(--muted)" }}>
-            {hookLine}
+            {displayHookLine}
           </span>
           <span
             className="whitespace-nowrap text-xs"

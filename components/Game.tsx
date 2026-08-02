@@ -5,13 +5,11 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { getDeviceId } from "@/lib/deviceId";
 import type { PlayerResult } from "@/lib/types";
-import { NameScreen } from "./NameScreen";
 import { PlayScreen } from "./PlayScreen";
 import { HandoffScreen } from "./HandoffScreen";
 import { RevealScreen } from "./RevealScreen";
 
 type Stage =
-  | { name: "name" }
   | {
       name: "playing";
       playerName: string;
@@ -24,25 +22,27 @@ type Stage =
   | { name: "handoff"; player1: PlayerResult }
   | { name: "reveal"; mode: "solo" | "pass"; player1: PlayerResult; player2?: PlayerResult };
 
-export function Game() {
-  const [stage, setStage] = useState<Stage>({ name: "name" });
+export function Game({
+  playerName,
+  mode,
+  onRestart,
+}: {
+  playerName: string;
+  mode: "solo" | "pass";
+  /** Sends the player back to the landing screen for a fresh name/mode
+   * choice, rather than silently replaying with the same settings. */
+  onRestart: () => void;
+}) {
   const [deviceId] = useState(() => getDeviceId());
   const player = useQuery(api.players.getByDeviceId, { deviceId });
-
-  if (stage.name === "name") {
-    return (
-      <NameScreen
-        onStart={(playerName, mode) =>
-          setStage({
-            name: "playing",
-            playerName,
-            mode,
-            excludeWords: player?.recentWords ?? [],
-          })
-        }
-      />
-    );
-  }
+  const [stage, setStage] = useState<Stage>(() => ({
+    name: "playing",
+    playerName,
+    mode,
+    // player's Convex history may not have loaded yet at this exact
+    // moment - falls back to no exclusions rather than blocking start.
+    excludeWords: player?.recentWords ?? [],
+  }));
 
   if (stage.name === "playing") {
     return (
@@ -89,7 +89,7 @@ export function Game() {
       answers={stage.player1.answers}
       opponent={stage.player2}
       persist={stage.mode === "solo"}
-      onPlayAgain={() => setStage({ name: "name" })}
+      onPlayAgain={onRestart}
     />
   );
 }
