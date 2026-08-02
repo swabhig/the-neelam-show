@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { getDeviceId } from "@/lib/deviceId";
@@ -25,7 +25,15 @@ export function NameScreen({
 }) {
   const [name, setName] = useState("");
   const [mode, setMode] = useState<"solo" | "pass">("solo");
+  const [isIOS, setIsIOS] = useState(false);
   const getOrCreate = useMutation(api.players.getOrCreate);
+
+  useEffect(() => {
+    // navigator is unavailable during server-side prerendering, so this
+    // has to be a client-only effect, not a lazy useState initializer.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsIOS(/iPhone|iPad|iPod/.test(navigator.userAgent));
+  }, []);
 
   async function handleStart() {
     const trimmed = name.trim();
@@ -78,6 +86,21 @@ export function NameScreen({
             Round 1 &middot; {mode === "solo" ? "Solo" : "Pass & Play"}
           </span>
         </div>
+
+        {isIOS && (
+          <div
+            className="fade-in-up relative max-w-sm rounded-2xl px-4 py-3 text-center text-xs font-semibold"
+            style={{
+              background: "var(--card)",
+              border: "2px solid var(--ink)",
+              color: "var(--muted)",
+              animationDelay: "40ms",
+            }}
+          >
+            Known issue on iPhone: voice capture may not register your
+            answers yet. A fix is in progress - sorry about that.
+          </div>
+        )}
 
         <div className="relative flex w-full flex-col items-center overflow-hidden py-8 text-center">
           <div
