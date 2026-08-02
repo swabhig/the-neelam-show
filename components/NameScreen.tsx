@@ -83,7 +83,7 @@ export function NameScreen({
             className="text-xs uppercase tracking-widest"
             style={{ color: "var(--muted)", fontWeight: 600 }}
           >
-            Round 1 &middot; {mode === "solo" ? "Solo" : "Pass & Play"}
+            Round 1 &middot; {mode === "solo" ? "Solo" : "vs"}
           </span>
         </div>
 
@@ -202,7 +202,7 @@ export function NameScreen({
                   color: "var(--ink)",
                 }}
               >
-                {m === "solo" ? "Solo" : "Play with a friend"}
+                {m === "solo" ? "Solo" : "vs"}
               </button>
             ))}
           </div>
