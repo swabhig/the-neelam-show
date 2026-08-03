@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { startWaitingMusic, stopWaitingMusic } from "@/lib/waitingMusic";
 
 type Step = "choice" | "waiting" | "join-input";
 
@@ -30,6 +31,12 @@ export function RemoteLobbyScreen({
       onReady(roomId, 1);
     }
   }, [step, room?.player2Name, roomId, onReady]);
+
+  useEffect(() => {
+    if (step !== "waiting") return;
+    startWaitingMusic();
+    return () => stopWaitingMusic();
+  }, [step]);
 
   async function handleCreate() {
     const result = await createRoom({ player1Name: name });

@@ -1,75 +1,95 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { startWaitingMusic, stopWaitingMusic } from "@/lib/waitingMusic";
 
-// The "make" window on the 0-100 power track - tap SHOOT while the
-// marker is inside this range to sink it.
-const SWEET_SPOT: [number, number] = [42, 58];
-const CYCLE_MS = 1400;
+const CYCLE_MS = 1200;
+// The ball is "makeable" for the top slice of its bounce - the hoop
+// glows during this window so there's a real visual cue to react to,
+// same idea as watching an obstacle approach in an endless-runner game
+// rather than reading an abstract meter.
+const MAKE_THRESHOLD = 0.72;
 
 type ShotResult = "make" | "miss" | null;
 
 /**
- * Shown while waiting for the opponent to finish their round. A power
- * marker sweeps back and forth on a track; tapping SHOOT while it's in
- * the highlighted zone sinks the basket. Purely a waiting-room diversion
- * - the tally gets carried into the reveal screen as a fun aside, not a
- * real score.
+ * Shown while waiting for the opponent to finish their round. A ball
+ * bounces continuously toward a hoop that glows when it's in reach - tap
+ * anywhere while it's glowing to sink it. Every tap gives instant
+ * feedback and nothing ever locks out input; misses cost nothing and the
+ * ball just keeps bouncing. Purely a waiting-room diversion - the tally
+ * gets carried into the reveal screen as a fun aside, not a real score.
  */
 export function BasketballGame({
   onScoreChange,
 }: {
   onScoreChange?: (score: number) => void;
 }) {
-  const [power, setPower] = useState(0);
+  const [height, setHeight] = useState(0); // 0 (ground) to 1 (at hoop)
   const [score, setScore] = useState(0);
   const [result, setResult] = useState<ShotResult>(null);
-  const lockedRef = useRef(false);
-  // Set inside the animation frame callback below, not here - calling
-  // performance.now() during render is an impure render side effect.
+  const heightRef = useRef(0);
+  const celebratingRef = useRef(false);
   const startTimeRef = useRef<number | null>(null);
   const rafRef = useRef<number | undefined>(undefined);
+  const resultTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => {
+    onScoreChange?.(score);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [score]);
+
+  useEffect(() => {
+    startWaitingMusic();
+    return () => stopWaitingMusic();
+  }, []);
 
   useEffect(() => {
     function tick(now: number) {
       if (startTimeRef.current === null) startTimeRef.current = now;
-      if (!lockedRef.current) {
+      if (!celebratingRef.current) {
         const elapsed = (now - startTimeRef.current) % CYCLE_MS;
         const t = elapsed / CYCLE_MS;
-        const p = t < 0.5 ? t * 2 : 2 - t * 2;
-        setPower(Math.round(p * 100));
+        // Smooth up-and-down bounce, 0 -> 1 -> 0 each cycle.
+        const h = Math.sin(t * Math.PI);
+        heightRef.current = h;
+        setHeight(h);
       }
       rafRef.current = requestAnimationFrame(tick);
     }
     rafRef.current = requestAnimationFrame(tick);
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
     };
   }, []);
 
   function handleShoot() {
-    if (lockedRef.current) return;
-    lockedRef.current = true;
+    const isMake = heightRef.current >= MAKE_THRESHOLD;
+    clearTimeout(resultTimeoutRef.current);
 
-    const isMake = power >= SWEET_SPOT[0] && power <= SWEET_SPOT[1];
-    setResult(isMake ? "make" : "miss");
     if (isMake) {
-      setScore((s) => {
-        const next = s + 1;
-        onScoreChange?.(next);
-        return next;
-      });
+      // Brief celebratory pause only on a make - success feels rewarding
+      // to pause on, but a miss should never cost the player anything,
+      // so misses don't interrupt the rhythm at all.
+      celebratingRef.current = true;
+      setResult("make");
+      setScore((s) => s + 1);
+      resultTimeoutRef.current = setTimeout(() => {
+        setResult(null);
+        celebratingRef.current = false;
+        startTimeRef.current = performance.now();
+      }, 500);
+    } else {
+      setResult("miss");
+      resultTimeoutRef.current = setTimeout(() => setResult(null), 300);
     }
-
-    setTimeout(() => {
-      setResult(null);
-      startTimeRef.current = performance.now();
-      lockedRef.current = false;
-    }, 800);
   }
 
+  const isGlowing = height >= MAKE_THRESHOLD && result !== "make";
+
   return (
-    <div className="relative flex flex-col items-center gap-7 px-6 text-center">
+    <div className="relative flex flex-col items-center gap-5 px-6 text-center">
       <span
         className="text-xs font-bold uppercase tracking-[0.2em]"
         style={{ color: "var(--muted)" }}
@@ -78,42 +98,74 @@ export function BasketballGame({
       </span>
 
       <div className="flex items-center gap-3">
-        <span className="text-4xl">🏀</span>
+        <span className="text-3xl">🏀</span>
         <span className="display text-4xl" style={{ color: "var(--ink)" }}>
           {score}
         </span>
       </div>
 
-      <div
-        className="relative w-full max-w-xs rounded-full"
+      <p className="text-sm font-semibold" style={{ color: "var(--muted)", maxWidth: 260 }}>
+        Tap when the ball&apos;s near the hoop
+      </p>
+
+      <button
+        onClick={handleShoot}
+        className="relative flex w-full max-w-xs select-none flex-col items-center justify-end"
         style={{
-          height: 20,
-          border: "2px solid var(--ink)",
-          background: "var(--card)",
+          height: 220,
+          touchAction: "manipulation",
+          background: "none",
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
         }}
       >
-        <div
-          className="absolute top-0 h-full rounded-full"
-          style={{
-            left: `${SWEET_SPOT[0]}%`,
-            width: `${SWEET_SPOT[1] - SWEET_SPOT[0]}%`,
-            background: "var(--orange)",
-          }}
-        />
+        {/* Hoop */}
         <div
           className="absolute rounded-full"
           style={{
-            top: -6,
-            left: `calc(${power}% - 6px)`,
-            width: 20,
-            height: 20,
-            borderRadius: "50%",
-            background: "var(--accent)",
-            border: "2px solid var(--ink)",
-            transition: "left 0.02s linear",
+            top: 8,
+            width: 72,
+            height: 14,
+            border: "3px solid var(--ink)",
+            borderTop: "none",
+            background: "var(--card)",
+            boxShadow: isGlowing ? "0 0 0 8px var(--accent-glow)" : "none",
+            transition: "box-shadow 0.15s ease",
           }}
         />
-      </div>
+        <div
+          className="absolute"
+          style={{
+            top: 8,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 72,
+            height: 3,
+            background: "var(--ink)",
+          }}
+        />
+
+        {/* Ball, animated by height (0 = ground, 1 = at hoop) */}
+        <div
+          className="absolute text-4xl"
+          style={{
+            bottom: `${8 + height * 150}px`,
+            left: "50%",
+            transform: `translateX(-50%) scale(${result === "make" ? 0.6 : 1})`,
+            opacity: result === "make" ? 0 : 1,
+            transition: result === "make" ? "opacity 0.3s ease, transform 0.3s ease" : "none",
+          }}
+        >
+          🏀
+        </div>
+
+        {/* Ground line */}
+        <div
+          className="absolute bottom-0 w-full rounded-full"
+          style={{ height: 3, background: "var(--muted-soft)", opacity: 0.4 }}
+        />
+      </button>
 
       <div
         className="display text-2xl"
@@ -124,19 +176,6 @@ export function BasketballGame({
       >
         {result === "make" ? "SWISH!" : result === "miss" ? "brick." : "-"}
       </div>
-
-      <button
-        onClick={handleShoot}
-        className="poster-action-btn rounded-full px-10 py-4 text-lg font-extrabold"
-        style={{
-          background: "var(--accent)",
-          color: "var(--card)",
-          border: "2px solid var(--ink)",
-          boxShadow: "4px 4px 0 var(--ink)",
-        }}
-      >
-        Shoot
-      </button>
     </div>
   );
 }

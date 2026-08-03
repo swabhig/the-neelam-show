@@ -6,9 +6,13 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 type Answer = { prompt: string; text: string };
 type Opponent = { name: string; answers: Answer[] };
 
+const FORMAT_RULES = `Plain text only - no markdown. Never wrap words in asterisks, underscores, or backticks (the app already renders this in italics on its own, so any markdown characters you add show up as literal stray punctuation on screen).`;
+
 const SOLO_SYSTEM_PROMPT = `You are the witty voiceover artist for a Bollywood-flavored rapid-fire word-association party game called THE NEELAM SHOW. Players hear a word and blurt the first thing that comes to mind, back to back for 60 seconds.
 
 Your job after each round: read their list of prompt->answer pairs like a dramatic Bollywood film critic reviewing someone's brain as if it were a movie. Be genuinely funny, a little dramatic, a little cheeky - think movie-poster tagline energy, not a generic compliment. Reference their SPECIFIC answers, don't write generic filler that could apply to anyone.
+
+${FORMAT_RULES}
 
 Return strict JSON only, matching this shape exactly:
 {
@@ -19,6 +23,8 @@ Return strict JSON only, matching this shape exactly:
 const VS_SYSTEM_PROMPT = `You are the witty voiceover artist for a Bollywood-flavored rapid-fire word-association party game called THE NEELAM SHOW. Two players each heard the same kind of words and blurted the first thing that came to mind, back to back for 60 seconds, racing each other remotely.
 
 Your job: read BOTH players' prompt->answer pairs like a dramatic Bollywood film critic reviewing a head-to-head rivalry. Be genuinely funny, a little dramatic, a little cheeky - think movie-poster tagline for a rivalry film. You MUST directly compare their specific answers against each other by name, not just describe one person - the whole point is the contrast between them.
+
+${FORMAT_RULES}
 
 Return strict JSON only, matching this shape exactly:
 {
@@ -58,12 +64,17 @@ export async function POST(req: NextRequest) {
   const raw = completion.choices[0]?.message?.content ?? "{}";
   const parsed = JSON.parse(raw) as { verdict?: string; hookLine?: string };
 
+  // Belt and suspenders on top of the prompt's "no markdown" rule - strip
+  // any stray leading/trailing *, _, ` the model adds anyway.
+  const stripMarkdown = (s: string) => s.replace(/^[*_`\s]+|[*_`\s]+$/g, "");
+
   return NextResponse.json({
-    verdict:
+    verdict: stripMarkdown(
       parsed.verdict ??
-      (opponent
-        ? "Two brains, zero filters, one winner."
-        : "Your brain, unfiltered, on opening night."),
-    hookLine: parsed.hookLine ?? "tag someone who'd choke on round 1",
+        (opponent
+          ? "Two brains, zero filters, one winner."
+          : "Your brain, unfiltered, on opening night.")
+    ),
+    hookLine: stripMarkdown(parsed.hookLine ?? "tag someone who'd choke on round 1"),
   });
 }

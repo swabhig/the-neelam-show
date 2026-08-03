@@ -84,6 +84,19 @@ export const updateCount = mutation({
     count: v.number(),
   },
   handler: async (ctx, { roomId, player, count }) => {
+    const room = await ctx.db.get(roomId);
+    if (!room) return;
+
+    // A live update fires on every single score during the round - over
+    // a real mobile network these can arrive at the server out of send
+    // order, so a stale "you scored 19" can land after the true "you
+    // scored 20" and silently overwrite it. The count only ever goes up
+    // during a round, so ignoring any update that isn't actually higher
+    // than what's stored makes the result correct regardless of arrival
+    // order, without needing sequence numbers.
+    const current = player === 1 ? room.player1Count : (room.player2Count ?? 0);
+    if (count <= current) return;
+
     await ctx.db.patch(roomId, player === 1 ? { player1Count: count } : { player2Count: count });
   },
 });
@@ -99,10 +112,16 @@ export const markDone = mutation({
     const room = await ctx.db.get(roomId);
     if (!room) return;
 
+    // Same out-of-order concern as updateCount - take whichever count is
+    // higher, in case a still-in-flight live update for the true final
+    // score hasn't landed yet when this fires.
+    const current = player === 1 ? room.player1Count : (room.player2Count ?? 0);
+    const finalCount = Math.max(current, count);
+
     const patch =
       player === 1
-        ? { player1Count: count, player1Done: true, player1Answers: answers }
-        : { player2Count: count, player2Done: true, player2Answers: answers };
+        ? { player1Count: finalCount, player1Done: true, player1Answers: answers }
+        : { player2Count: finalCount, player2Done: true, player2Answers: answers };
     await ctx.db.patch(roomId, patch);
 
     const bothDone = player === 1 ? room.player2Done : room.player1Done;

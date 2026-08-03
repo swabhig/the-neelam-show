@@ -16,10 +16,32 @@ const WORD_CYCLE_MS = 2000;
 const MIN_MS_PER_CHAR = 90;
 const MIN_SPEAK_FLOOR_MS = 500;
 
-// Whisper's well-documented habit of hallucinating a stock phrase when
-// given silence or pure noise - filtered out so ambient sound is never
-// mistaken for a spoken answer.
-const NOISE_PATTERNS = /^(thank you\.?|thanks for watching\.?|you\.?|bye\.?|\.+)$/i;
+// Whisper's well-documented habit of hallucinating stock phrases when
+// given silence or unclear noise - filtered out so ambient sound is
+// never mistaken for a spoken answer. Real answers to "say the first
+// word that comes to mind" are almost always 1-4 words; these are the
+// exact-match phrases and telltale substrings Whisper actually produced
+// during real play sessions (YouTube-caption-style sign-offs, "please
+// subscribe" boilerplate, foreign-language broadcast credits, etc.).
+const NOISE_PATTERNS =
+  /^(thank you\.?|thanks for watching\.?|thank you so much for watching\s*!?|you\.?|bye\.?|goodbye\.?|please subscribe\.?|subscribe\.?|like and subscribe\.?|\.+)$/i;
+
+const NOISE_SUBSTRINGS = [
+  "subs by",
+  "www.",
+  "http://",
+  "https://",
+  ".com",
+  ".co.uk",
+  "share this video",
+  "social media",
+  "subscribe",
+];
+
+// A genuine "first word" answer is essentially never this long - past
+// this, it's almost certainly a Whisper hallucination (rambling
+// caption-style text) rather than a real spoken response.
+const MAX_REAL_ANSWER_WORDS = 10;
 
 type Answer = { prompt: string; text: string };
 type Phase = "hostSpeaking" | "listening";
@@ -85,7 +107,12 @@ export function PlayScreen({
 
       function scoreIfRealAnswer(prompt: string, text: string) {
         const cleaned = text.trim();
-        const isNoise = !cleaned || NOISE_PATTERNS.test(cleaned);
+        const lower = cleaned.toLowerCase();
+        const isNoise =
+          !cleaned ||
+          NOISE_PATTERNS.test(cleaned) ||
+          NOISE_SUBSTRINGS.some((s) => lower.includes(s)) ||
+          cleaned.split(/\s+/).length > MAX_REAL_ANSWER_WORDS;
         if (isNoise) return;
 
         liveCount += 1;

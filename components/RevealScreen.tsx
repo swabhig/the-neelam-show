@@ -64,10 +64,23 @@ export function RevealScreen({
   onPlayAgain: () => void;
 }) {
   const isRemote = remoteVerdict !== undefined;
-  const [verdict, setVerdict] = useState(
-    "Your brain, unfiltered, on opening night."
+  // No real speech captured for anyone - asking the AI for a verdict
+  // here just invites it to invent answers nobody actually gave.
+  const nobodyAnswered = answers.length === 0 && (opponent?.answers.length ?? 0) === 0;
+  const [verdict, setVerdict] = useState(() =>
+    nobodyAnswered
+      ? opponent
+        ? "Total silence on both sides - not a single word landed."
+        : "Total silence - not a single word landed this round."
+      : "Your brain, unfiltered, on opening night."
   );
-  const [hookLine, setHookLine] = useState("tag someone who'd choke on round 1");
+  const [hookLine, setHookLine] = useState(() =>
+    nobodyAnswered
+      ? opponent
+        ? "rematch, and actually say something this time"
+        : "dare a friend to at least try"
+      : "tag someone who'd choke on round 1"
+  );
   const displayVerdict = isRemote ? (remoteVerdict?.verdict ?? "revealing…") : verdict;
   const displayHookLine = isRemote ? (remoteVerdict?.hookLine ?? "") : hookLine;
   // Flavor stat only, not calculated from real data - there isn't enough
@@ -100,11 +113,15 @@ export function RevealScreen({
       });
     }
 
-    if (!isRemote) {
+    if (!isRemote && !nobodyAnswered) {
       fetch("/api/verdict", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, answers }),
+        body: JSON.stringify(
+          opponent
+            ? { name, answers, opponent: { name: opponent.name, answers: opponent.answers } }
+            : { name, answers }
+        ),
       })
         .then((res) => res.json())
         .then((data: { verdict: string; hookLine: string }) => {
@@ -154,7 +171,7 @@ export function RevealScreen({
         className="relative flex w-full flex-col overflow-hidden"
         style={{
           maxWidth: 440,
-          aspectRatio: "4 / 5",
+          minHeight: 420,
           border: "2px solid var(--ink)",
           borderRadius: 22,
           background: "var(--card)",
@@ -193,16 +210,23 @@ export function RevealScreen({
           </span>
         </div>
 
-        <div className="relative flex items-center justify-between px-6 pt-6">
-          <span className="display text-lg" style={{ letterSpacing: "0.03em" }}>
+        <div
+          className="relative flex items-center justify-between gap-2 px-6 pt-6"
+          style={{ flexWrap: "wrap" }}
+        >
+          <span
+            className="display text-base sm:text-lg"
+            style={{ letterSpacing: "0.03em", whiteSpace: "nowrap" }}
+          >
             THE NEELAM SHOW
           </span>
           <span
-            className="rounded-full px-3 py-1 text-xs font-bold uppercase"
+            className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase sm:px-3 sm:text-xs"
             style={{
-              letterSpacing: "0.15em",
+              letterSpacing: "0.12em",
               color: "var(--accent)",
               border: "2px solid var(--accent)",
+              whiteSpace: "nowrap",
             }}
           >
             Opening Night
@@ -328,7 +352,7 @@ export function RevealScreen({
               color: "var(--accent)",
               maxWidth: 320,
               display: "-webkit-box",
-              WebkitLineClamp: 4,
+              WebkitLineClamp: 6,
               WebkitBoxOrient: "vertical",
               overflow: "hidden",
             }}
@@ -338,14 +362,14 @@ export function RevealScreen({
         </div>
 
         <div
-          className="relative flex items-center justify-between gap-3.5 px-6 py-5"
+          className="relative flex flex-col gap-1.5 px-6 py-5"
           style={{ borderTop: "2px solid var(--ink)" }}
         >
           <span className="text-sm italic" style={{ color: "var(--muted)" }}>
             {displayHookLine}
           </span>
           <span
-            className="whitespace-nowrap text-xs"
+            className="text-xs"
             style={{ letterSpacing: "0.06em", color: "var(--muted-soft)" }}
           >
             {WATERMARK}

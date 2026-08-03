@@ -42,6 +42,18 @@ export function RemoteGame({
     if (!room.player1Answers || !room.player2Answers || !room.player2Name) return;
 
     verdictRequested.current = true;
+
+    if (room.player1Answers.length === 0 && room.player2Answers.length === 0) {
+      // No real speech captured for either player - asking the AI here
+      // just invites it to invent answers nobody actually gave.
+      setVerdict({
+        roomId: room._id,
+        verdict: "Total silence on both sides - not a single word landed.",
+        hookLine: "rematch, and actually say something this time",
+      });
+      return;
+    }
+
     fetch("/api/verdict", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
