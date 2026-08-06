@@ -5,7 +5,11 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Answer, PlayerResult } from "@/lib/types";
 
-const WATERMARK = "the-neelam-show.vercel.app";
+const WATERMARK = "theneelamshow.xyz";
+
+function firstName(fullName: string): string {
+  return fullName.trim().split(/\s+/)[0] || fullName;
+}
 
 function downloadCsv(
   filenameBase: string,
@@ -27,7 +31,7 @@ function downloadCsv(
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `the-neelam-show-${filenameBase.toLowerCase().replace(/\s+/g, "-")}.csv`;
+  link.download = `${filenameBase.toLowerCase().replace(/\s+/g, "-")}-rapid-fire-answers.csv`;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -416,7 +420,7 @@ export function RevealScreen({
         <button
           onClick={() =>
             downloadCsv(
-              opponent ? `${name}-vs-${opponent.name}` : name,
+              opponent ? `${firstName(name)}-vs-${firstName(opponent.name)}` : firstName(name),
               opponent ? [{ name, answers }, { name: opponent.name, answers: opponent.answers }] : [{ name, answers }]
             )
           }
