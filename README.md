@@ -3,7 +3,7 @@
 
 a rapid-fire word-association party game, inspired by neelam kothari's cameo in kuch kuch hota hai (1998) — hear a word, say the first thing that comes to mind, no time to think, 60 seconds on the clock.
 
-**live at → [the-neelam-show.vercel.app](https://the-neelam-show.vercel.app)**
+**live at → [theneelamshow.xyz](https://theneelamshow.xyz)**
 
 ---
 
